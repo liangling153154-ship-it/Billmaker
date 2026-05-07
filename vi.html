@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Sen's Invoice</title>
+<title>Sen's Hóa Đơn</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap');
@@ -213,20 +213,14 @@ input:focus, select:focus, textarea:focus {
   padding: 28px 24px 40px; position: relative;
   overflow: hidden; background: #fff;
 }
-
-/* decorative top bar */
 .inv-topbar {
   position: absolute; top: 0; left: 0; right: 0; height: 5px;
   background: linear-gradient(90deg, var(--navy) 60%, var(--gold) 100%);
 }
-
-/* corner accent */
 .inv-corner {
   position: absolute; bottom: 0; right: 0; width: 0; height: 0; border-style: solid;
   border-width: 0 56px 56px 0; border-color: transparent var(--gold) transparent transparent;
 }
-
-/* header */
 .inv-hdr {
   display: flex; justify-content: space-between; align-items: center;
   margin-bottom: 18px; padding-bottom: 14px;
@@ -241,8 +235,6 @@ input:focus, select:focus, textarea:focus {
 .inv-brand { font-size: 13px; font-weight: 800; color: var(--navy); letter-spacing: .8px; line-height: 1.25; }
 .inv-brand-s { font-size: 9px; color: var(--gold); letter-spacing: 2px; text-transform: uppercase; }
 .inv-contact { text-align: right; font-size: 9.5px; color: #777; line-height: 1.8; }
-
-/* title row */
 .inv-title-row {
   display: flex; align-items: flex-end; justify-content: space-between;
   margin-bottom: 4px;
@@ -254,14 +246,10 @@ input:focus, select:focus, textarea:focus {
 .inv-guest-box { text-align: right; }
 .inv-guest-box .lbl { font-size: 9px; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
 .inv-guest-box .val { font-size: 15px; font-weight: 700; color: var(--navy); display: block; margin-top: 1px; }
-
-/* vnd notice */
 .inv-disc {
   font-size: 9.5px; font-style: italic; color: #aaa;
   margin-bottom: 12px; letter-spacing: .2px;
 }
-
-/* meta */
 .inv-meta {
   display: flex; flex-wrap: wrap; gap: 8px 16px;
   margin-bottom: 14px;
@@ -269,8 +257,6 @@ input:focus, select:focus, textarea:focus {
   padding: 8px 12px; font-size: 11px; color: #555;
 }
 .inv-meta strong { color: var(--navy); }
-
-/* table */
 .inv-tbl { width: 100%; border-collapse: collapse; }
 .inv-tbl th {
   background: var(--navy); color: #fff; font-size: 10px;
@@ -278,7 +264,6 @@ input:focus, select:focus, textarea:focus {
   padding: 9px 10px; text-align: left;
 }
 .inv-tbl th:last-child { text-align: right; width: 100px; }
-
 .inv-tbl td {
   padding: 10px 10px; font-size: 12px;
   border-bottom: 1px solid var(--border); vertical-align: top;
@@ -286,13 +271,10 @@ input:focus, select:focus, textarea:focus {
 .inv-tbl td:last-child { text-align: right; font-weight: 700; color: var(--navy); white-space: nowrap; }
 .inv-tbl tr:last-child td { border-bottom: none; }
 .inv-tbl tr:nth-child(even) td { background: #fdfcf8; }
-
 .inv-item-name { font-weight: 600; color: var(--navy); font-size: 12px; display: block; }
 .inv-item-meta { font-size: 10px; color: #999; margin-top: 2px; display: block; }
 .inv-item-note { font-size: 10px; color: #aaa; font-style: italic; margin-top: 2px; display: block; }
 .inv-item-disc { font-size: 10px; color: var(--red); margin-top: 2px; display: block; }
-
-/* total footer */
 .inv-total-box {
   background: var(--navy); border-radius: 10px;
   padding: 14px 16px; margin-top: 16px;
@@ -302,8 +284,6 @@ input:focus, select:focus, textarea:focus {
 .inv-tot-right { text-align: right; }
 .inv-tot-val { font-size: 20px; font-weight: 700; color: var(--gold); }
 .inv-tot-usd { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 2px; }
-
-/* deposit */
 .inv-dep {
   background: var(--gold-bg); border: 1px solid var(--gold-light);
   border-radius: 8px; padding: 10px 14px; font-size: 11.5px; margin-top: 10px;
@@ -314,44 +294,39 @@ input:focus, select:focus, textarea:focus {
   border-top: 1px dashed var(--gold-light); padding-top: 7px; margin-top: 5px;
   display: flex; justify-content: space-between; align-items: baseline;
 }
-
-/* note */
 .inv-note {
   margin-top: 10px; font-size: 10.5px; color: #999; font-style: italic;
   padding: 8px 12px; border-radius: 6px;
   background: #fafafa; border-left: 3px solid var(--gold-light);
 }
-
-/* footer stamp */
 .inv-stamp {
   margin-top: 20px; text-align: center;
   font-size: 9px; color: #ccc; letter-spacing: 1px; text-transform: uppercase;
 }
-
 .sline { display: block; line-height: 1.6; }
 </style>
 </head>
 <body>
 
-<div id="loading"><div class="spinner"></div><p>Generating image...</p></div>
+<div id="loading"><div class="spinner"></div><p>Đang tạo ảnh...</p></div>
 <div id="inv-export"></div>
 
 <!-- TOPBAR -->
 <div class="topbar">
   <div class="topbar-logo">
     <div class="topbar-icon"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></div>
-    <div class="topbar-name"><span>Sen's</span> Invoice</div>
+    <div class="topbar-name"><span>Sen's</span> Hóa Đơn</div>
   </div>
   <div style="display:flex;gap:6px;align-items:center">
-    <a href="vi.html" style="background:none;border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 10px;border-radius:6px;font-size:13px;cursor:pointer;text-decoration:none">🇻🇳</a>
+    <a href="index.html" style="background:none;border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 10px;border-radius:6px;font-size:13px;cursor:pointer;text-decoration:none">🇬🇧</a>
     <button onclick="resetForm()" style="background:none;border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer">🔄</button>
   </div>
 </div>
 
 <!-- TABS -->
 <div class="tabs">
-  <div class="tab active" id="tab-form" onclick="switchTab('form')">✏️ Input</div>
-  <div class="tab" id="tab-preview" onclick="switchTab('preview')">👁 Preview</div>
+  <div class="tab active" id="tab-form" onclick="switchTab('form')">✏️ Nhập liệu</div>
+  <div class="tab" id="tab-preview" onclick="switchTab('preview')">👁 Xem trước</div>
 </div>
 
 <!-- ── FORM PANEL ── -->
@@ -360,55 +335,55 @@ input:focus, select:focus, textarea:focus {
 
   <div class="summary-bar">
     <div>
-      <div class="s-lbl">Total</div>
+      <div class="s-lbl">Tổng tiền</div>
       <div class="s-val" id="s-total">0 đ</div>
       <div class="s-usd" id="s-usd"></div>
     </div>
-    <div style="text-align:right"><div class="s-lbl">Remaining</div><div class="s-val2" id="s-remain">—</div></div>
+    <div style="text-align:right"><div class="s-lbl">Còn lại</div><div class="s-val2" id="s-remain">—</div></div>
   </div>
 
   <div class="card">
-    <div class="card-head">🏠 Guest Info</div>
+    <div class="card-head">🏠 Thông tin khách</div>
     <div class="card-body">
-      <div class="field"><label>Guest Name</label>
-        <input type="text" id="f-guest" placeholder="e.g. Sarah Johnson" oninput="render()"></div>
+      <div class="field"><label>Tên khách</label>
+        <input type="text" id="f-guest" placeholder="Ví dụ: Nguyễn Văn A" oninput="render()"></div>
       <div class="row2">
-        <div class="field"><label>Room</label>
-          <input type="text" id="f-room" placeholder="Room 103" oninput="render()"></div>
-        <div class="field"><label>Nights</label>
+        <div class="field"><label>Phòng</label>
+          <input type="text" id="f-room" placeholder="Phòng 103" oninput="render()"></div>
+        <div class="field"><label>Số đêm</label>
           <input type="text" id="f-nights" readonly style="background:#f5f5f5;color:#aaa;font-size:13px"></div>
       </div>
       <div class="row2">
-        <div class="field"><label>📅 Check-in</label>
+        <div class="field"><label>📅 Nhận phòng</label>
           <input type="date" id="f-checkin" oninput="calcNights();render()"></div>
-        <div class="field"><label>📅 Check-out</label>
+        <div class="field"><label>📅 Trả phòng</label>
           <input type="date" id="f-checkout" oninput="calcNights();render()"></div>
       </div>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-head">⚡ Quick Add</div>
+    <div class="card-head">⚡ Thêm nhanh</div>
     <div class="card-body"><div class="presets" id="presets"></div></div>
   </div>
 
   <div class="card">
-    <div class="card-head">📋 Services</div>
+    <div class="card-head">📋 Dịch vụ</div>
     <div class="card-body" style="padding-bottom:8px">
       <div id="items-con"></div>
-      <button class="add-item-btn" onclick="addItem()">+ Add new item</button>
+      <button class="add-item-btn" onclick="addItem()">+ Thêm mục mới</button>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-head">💰 Payment & Notes</div>
+    <div class="card-head">💰 Thanh toán & Ghi chú</div>
     <div class="card-body">
-      <div class="field"><label>Exchange Rate (VND per 1 USD)</label>
+      <div class="field"><label>Tỷ giá (VNĐ / 1 USD)</label>
         <input type="number" id="f-rate" value="26323" min="1" inputmode="numeric" oninput="render()"></div>
-      <div class="field"><label>Deposit Received (VND)</label>
+      <div class="field"><label>Tiền cọc đã nhận (VNĐ)</label>
         <input type="number" id="f-deposit" placeholder="0" min="0" inputmode="numeric" oninput="render()"></div>
-      <div class="field"><label>Notes (optional)</label>
-        <textarea id="f-note" rows="2" placeholder="Bus ticket included..." oninput="render()" style="resize:none;font-size:13px"></textarea></div>
+      <div class="field"><label>Ghi chú (tuỳ chọn)</label>
+        <textarea id="f-note" rows="2" placeholder="Đã thanh toán vé xe..." oninput="render()" style="resize:none;font-size:13px"></textarea></div>
     </div>
   </div>
 
@@ -421,15 +396,15 @@ input:focus, select:focus, textarea:focus {
     <div class="preview-wrap" id="preview-wrap">
       <div class="preview-inner" id="preview-inner"></div>
     </div>
-    <p style="font-size:11px;color:#aaa;margin-top:10px;text-align:center">Scaled preview · Full resolution on export</p>
+    <p style="font-size:11px;color:#aaa;margin-top:10px;text-align:center">Xem trước thu nhỏ · Ảnh xuất đầy đủ độ nét</p>
   </div>
 </div>
 
 <!-- BOTTOM BAR -->
 <div class="action-bar">
   <button class="a-btn a-ghost" id="toggle-btn" onclick="toggleTab()">👁</button>
-  <button class="a-btn a-gold" onclick="downloadImage()">⬇ Save PNG</button>
-  <button class="a-btn a-primary" onclick="shareImage()">📤 Share</button>
+  <button class="a-btn a-gold" onclick="downloadImage()">⬇ Tải PNG</button>
+  <button class="a-btn a-primary" onclick="shareImage()">📤 Chia sẻ</button>
 </div>
 
 <script>
@@ -437,70 +412,70 @@ let items = [], idc = 0, curTab = 'form';
 
 const PRESET_GROUPS = [
   {
-    label: '🛏 Room', key: 'room',
+    label: '🛏 Phòng', key: 'room',
     items: [
-      {n:'Room (OTA)',q:1,u:'room',p:0},
-      {n:'Room (Direct book)',q:1,u:'room',p:0},
+      {n:'Phòng (OTA)',q:1,u:'phòng',p:0},
+      {n:'Phòng (Đặt trực tiếp)',q:1,u:'phòng',p:0},
     ]
   },
   {
-    label: '🏍 Motorbike Rental', key: 'bike',
+    label: '🏍 Thuê Xe Máy', key: 'bike',
     items: [
-      {n:'Honda Wave Alpha',q:1,u:'day',p:180000},
-      {n:'Honda Future',q:1,u:'day',p:250000},
-      {n:'Yamaha PG-1',q:1,u:'day',p:280000},
-      {n:'Honda Vision',q:1,u:'day',p:250000},
-      {n:'Honda Air Blade 125cc',q:1,u:'day',p:300000},
-      {n:'Honda Air Blade 160cc',q:1,u:'day',p:450000},
-      {n:'Honda Lead',q:1,u:'day',p:250000},
-      {n:'Honda Winner X',q:1,u:'day',p:280000},
-      {n:'Honda XR',q:1,u:'day',p:550000},
+      {n:'Honda Wave Alpha',q:1,u:'ngày',p:180000},
+      {n:'Honda Future',q:1,u:'ngày',p:250000},
+      {n:'Yamaha PG-1',q:1,u:'ngày',p:280000},
+      {n:'Honda Vision',q:1,u:'ngày',p:250000},
+      {n:'Honda Air Blade 125cc',q:1,u:'ngày',p:300000},
+      {n:'Honda Air Blade 160cc',q:1,u:'ngày',p:450000},
+      {n:'Honda Lead',q:1,u:'ngày',p:250000},
+      {n:'Honda Winner X',q:1,u:'ngày',p:280000},
+      {n:'Honda XR',q:1,u:'ngày',p:550000},
     ]
   },
   {
-    label: '🗺 Tours', key: 'tour',
+    label: '🗺 Tour Du Lịch', key: 'tour',
     items: [
-      {n:'Tour 1 Day',q:1,u:'pax',p:1550000},
-      {n:'Tour 2 Days (no overnight)',q:1,u:'pax',p:3200000},
-      {n:'Tour 2D1N',q:1,u:'pax',p:3250000},
-      {n:'Tour 3D2N',q:1,u:'pax',p:4850000},
-      {n:'Tour 4D3N',q:1,u:'pax',p:6450000},
-      {n:'Tour 3D2N Lolo Village',q:1,u:'pax',p:4950000},
+      {n:'Tour 1 Ngày',q:1,u:'người',p:1550000},
+      {n:'Tour 2 Ngày (không qua đêm)',q:1,u:'người',p:3200000},
+      {n:'Tour 2N1Đ',q:1,u:'người',p:3250000},
+      {n:'Tour 3N2Đ',q:1,u:'người',p:4850000},
+      {n:'Tour 4N3Đ',q:1,u:'người',p:6450000},
+      {n:'Tour 3N2Đ Bản Lô Lô',q:1,u:'người',p:4950000},
     ]
   },
   {
-    label: '🏠 Homestay Services', key: 'hs',
+    label: '🏠 Dịch Vụ Homestay', key: 'hs',
     subs: [
       {
-        label: 'Breakfast',
+        label: 'Bữa sáng',
         items: [
-          {n:'Breakfast: Western Breakfast',q:1,u:'set',p:50000},
-          {n:'Breakfast: Pancake',q:1,u:'set',p:50000},
-          {n:'Breakfast: Pho - Cao Bang noodle soup',q:1,u:'set',p:50000},
-          {n:'Breakfast: Cao Bang Steamed rice rolls',q:1,u:'set',p:50000},
-          {n:'Breakfast: Oat Yogurt',q:1,u:'set',p:50000},
+          {n:'Bữa sáng: Kiểu Tây',q:1,u:'suất',p:50000},
+          {n:'Bữa sáng: Bánh kếp (Pancake)',q:1,u:'suất',p:50000},
+          {n:'Bữa sáng: Phở Cao Bằng',q:1,u:'suất',p:50000},
+          {n:'Bữa sáng: Bánh cuốn Cao Bằng',q:1,u:'suất',p:50000},
+          {n:'Bữa sáng: Yến mạch sữa chua',q:1,u:'suất',p:50000},
         ]
       },
       {
-        label: 'Drinks',
+        label: 'Đồ uống',
         items: [
-          {n:'Iced Coffee / Long Black',q:1,u:'cup',p:35000},
-          {n:'White Coffee',q:1,u:'cup',p:40000},
-          {n:'Espresso',q:1,u:'cup',p:30000},
-          {n:'Black Tea',q:1,u:'cup',p:25000},
-          {n:'Water 500ml',q:1,u:'bottle',p:10000},
-          {n:'Water 1.5L',q:1,u:'bottle',p:20000},
-          {n:'Coca-Cola',q:1,u:'can',p:15000},
-          {n:'Beer',q:1,u:'can',p:20000},
+          {n:'Cà phê đá / Long Black',q:1,u:'ly',p:35000},
+          {n:'Bạc xỉu',q:1,u:'ly',p:40000},
+          {n:'Espresso',q:1,u:'ly',p:30000},
+          {n:'Trà đen',q:1,u:'ly',p:25000},
+          {n:'Nước lọc 500ml',q:1,u:'chai',p:10000},
+          {n:'Nước lọc 1.5L',q:1,u:'chai',p:20000},
+          {n:'Coca-Cola',q:1,u:'lon',p:15000},
+          {n:'Bia',q:1,u:'lon',p:20000},
         ]
       },
       {
-        label: 'Other Services',
+        label: 'Dịch vụ khác',
         items: [
-          {n:'Laundry',q:1,u:'kg',p:30000},
-          {n:'Ironing (white shirt)',q:1,u:'pc',p:8000},
-          {n:'Early Check-in (rent motorbike)',q:1,u:'pax',p:50000},
-          {n:'Early Check-in (no motorbike)',q:1,u:'pax',p:100000},
+          {n:'Giặt đồ',q:1,u:'kg',p:30000},
+          {n:'Ủi áo trắng',q:1,u:'cái',p:8000},
+          {n:'Nhận phòng sớm (có thuê xe)',q:1,u:'người',p:50000},
+          {n:'Nhận phòng sớm (không thuê xe)',q:1,u:'người',p:100000},
         ]
       }
     ]
@@ -549,7 +524,7 @@ function toggleGroup(key) {
 // ── INIT ──
 function init() {
   buildPresets();
-  items.push({id:++idc, n:'Room (OTA)', q:1, u:'room', p:0, disc:0, note:''});
+  items.push({id:++idc, n:'Phòng (OTA)', q:1, u:'phòng', p:0, disc:0, note:''});
   drawForms(); render();
   window.addEventListener('resize', () => { if(curTab==='preview') scalePreview(); });
 }
@@ -574,7 +549,6 @@ function updDisc(id,v) {
   if(el) el.textContent=fmtD(iSum(it));
   render();
 }
-// Recalc only (no DOM redraw) — used while typing in number fields
 function updCalcOnly(id,f,v) {
   const it=items.find(i=>i.id===id);
   if (!it) return;
@@ -604,25 +578,25 @@ function drawForms() {
     const s=iSum(it);
     return `<div class="item-card">
       <div class="item-head">
-        <span class="item-label">Item ${idx+1}</span>
+        <span class="item-label">Mục ${idx+1}</span>
         <span class="item-subtotal" id="isub-${it.id}">${fmtD(s)}</span>
         <button class="x-btn" onclick="removeItem(${it.id})">×</button>
       </div>
       <div class="item-body">
         <div class="col-lbl">
-          <span>Service</span><span style="text-align:center">Qty</span>
-          <span style="text-align:right">Price</span><span></span>
+          <span>Dịch vụ</span><span style="text-align:center">SL</span>
+          <span style="text-align:right">Đơn giá</span><span></span>
         </div>
         <div class="subrow">
-          <input type="text" value="${esc(it.n)}" placeholder="Name..." oninput="upd(${it.id},'n',this.value)">
+          <input type="text" value="${esc(it.n)}" placeholder="Tên..." oninput="upd(${it.id},'n',this.value)">
           <input type="text" inputmode="decimal" value="${it.q||''}" placeholder="1" onchange="upd(${it.id},'q',this.value)" oninput="updCalcOnly(${it.id},'q',this.value)" style="text-align:center">
-          <input type="text" inputmode="decimal" value="${it.p||''}" placeholder="Price" onchange="upd(${it.id},'p',this.value)" oninput="updCalcOnly(${it.id},'p',this.value)" style="text-align:right">
+          <input type="text" inputmode="decimal" value="${it.p||''}" placeholder="Giá" onchange="upd(${it.id},'p',this.value)" oninput="updCalcOnly(${it.id},'p',this.value)" style="text-align:right">
           <span></span>
         </div>
-        <textarea rows="1" placeholder="Note (optional)..." style="resize:none;font-size:12px;margin-top:5px;color:#666"
+        <textarea rows="1" placeholder="Ghi chú..." style="resize:none;font-size:12px;margin-top:5px;color:#666"
           oninput="upd(${it.id},'note',this.value)">${esc(it.note)}</textarea>
         <div class="disc-row">
-          <label>Discount</label>
+          <label>Giảm giá</label>
           <div class="disc-input-wrap">
             <input type="text" inputmode="decimal" min="0" max="100" value="${it.disc||''}" placeholder="0"
               oninput="updDisc(${it.id},this.value)" style="text-align:center">
@@ -630,8 +604,8 @@ function drawForms() {
           </div>
           ${it.disc>0?`<span class="disc-saving">− ${fmtD(iRaw(it)*(it.disc/100))}</span>`:''}
           <div class="unit-wrap">
-            <label>Unit</label>
-            <input type="text" value="${esc(it.u)}" placeholder="day" oninput="upd(${it.id},'u',this.value)" style="text-align:center">
+            <label>Đơn vị</label>
+            <input type="text" value="${esc(it.u)}" placeholder="ngày" oninput="upd(${it.id},'u',this.value)" style="text-align:center">
           </div>
         </div>
       </div>
@@ -650,7 +624,7 @@ function calcNights() {
   const co=document.getElementById('f-checkout').value;
   if(ci&&co){
     const d=Math.round((new Date(co)-new Date(ci))/86400000);
-    document.getElementById('f-nights').value=d>0?d+' night'+(d>1?'s':''):'—';
+    document.getElementById('f-nights').value=d>0?d+' đêm':'—';
   }
 }
 function fmtDate(v){if(!v)return'';const[y,m,d]=v.split('-');return`${d}/${m}/${y}`;}
@@ -658,7 +632,7 @@ function fmtDate(v){if(!v)return'';const[y,m,d]=v.split('-');return`${d}/${m}/${
 function getRate(){ return parseFloat(document.getElementById('f-rate').value)||26323; }
 function fmtUSD(vnd){ return '~$'+(vnd/getRate()).toFixed(1); }
 
-// ── RENDER (summary + export target) ──
+// ── RENDER ──
 function render() {
   const sub=items.reduce((s,i)=>s+iSum(i),0);
   const dep=parseFloat(document.getElementById('f-deposit').value)||0;
@@ -684,7 +658,7 @@ function buildHTML(target, sub, dep, rem) {
     const hasMeta = it.n && (it.p>0 || (it.q??1)!==1);
     const meta=hasMeta?`${qtyStr}${it.p>0?' × '+fmt(it.p)+' đ':''}`:null;
     const noteLine=it.note?`<span class="inv-item-note">${it.note}</span>`:'';
-    const discLine=disc>0?`<span class="inv-item-disc">Discount ${disc}% · −${fmt(raw*disc/100)} đ</span>`:'';
+    const discLine=disc>0?`<span class="inv-item-disc">Giảm ${disc}% · −${fmt(raw*disc/100)} đ</span>`:'';
     const total=disc>0?fmt(after):raw>0?fmt(raw):'—';
     return `<tr>
     <td>
@@ -698,14 +672,14 @@ function buildHTML(target, sub, dep, rem) {
 
   const metaHtml=(ci||co||room)?`<div class="inv-meta">
     ${room?`<span>🛏 <strong>${room}</strong></span>`:''}
-    ${ci?`<span>📅 In: <strong>${fmtDate(ci)}</strong></span>`:''}
-    ${co?`<span>📅 Out: <strong>${fmtDate(co)}</strong></span>`:''}
+    ${ci?`<span>📅 Nhận phòng: <strong>${fmtDate(ci)}</strong></span>`:''}
+    ${co?`<span>📅 Trả phòng: <strong>${fmtDate(co)}</strong></span>`:''}
   </div>`:'';
 
   const depHtml=dep>0?`<div class="inv-dep">
-    <div class="inv-dep-row"><span>Subtotal</span><span>${fmt(sub)} đ</span></div>
-    <div class="inv-dep-row"><span>Deposit paid</span><span style="color:#27ae60">− ${fmt(dep)} đ</span></div>
-    <div class="inv-dep-final"><span>Balance due</span><span>${fmt(rem)} đ <span style="font-size:11px;font-weight:400;color:#aaa">${fmtUSD(rem)}</span></span></div>
+    <div class="inv-dep-row"><span>Tổng cộng</span><span>${fmt(sub)} đ</span></div>
+    <div class="inv-dep-row"><span>Đã đặt cọc</span><span style="color:#27ae60">− ${fmt(dep)} đ</span></div>
+    <div class="inv-dep-final"><span>Còn lại thanh toán</span><span>${fmt(rem)} đ <span style="font-size:11px;font-weight:400;color:#aaa">${fmtUSD(rem)}</span></span></div>
   </div>`:'';
 
   const noteHtml=note?`<div class="inv-note">${note}</div>`:'';
@@ -721,24 +695,24 @@ function buildHTML(target, sub, dep, rem) {
       <div class="inv-contact">+84 822 946 888<br>060 Tổ 7, Ngọc Xuân<br>TP. Cao Bằng</div>
     </div>
     <div class="inv-title-row">
-      <div class="inv-title">Invoice</div>
-      <div class="inv-guest-box"><span class="lbl">Guest</span><strong class="val">${guest}</strong></div>
+      <div class="inv-title">Hóa đơn</div>
+      <div class="inv-guest-box"><span class="lbl">Khách</span><strong class="val">${guest}</strong></div>
     </div>
-    <div class="inv-disc">Payment in Vietnamese Dong (VND) only</div>
+    <div class="inv-disc">Chỉ thanh toán bằng Việt Nam Đồng (VNĐ)</div>
     ${metaHtml}
     <table class="inv-tbl">
-      <thead><tr><th>Service</th><th style="text-align:right">Amount</th></tr></thead>
+      <thead><tr><th>Dịch vụ</th><th style="text-align:right">Thành tiền</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
     <div class="inv-total-box">
-      <div class="inv-tot-lbl">Total</div>
+      <div class="inv-tot-lbl">Tổng</div>
       <div class="inv-tot-right">
         <div class="inv-tot-val">${fmt(sub)} đ</div>
         <div class="inv-tot-usd">${fmtUSD(sub)}</div>
       </div>
     </div>
     ${depHtml}${noteHtml}
-    <div class="inv-stamp">Sen's Homestay · Thank you for staying with us ♥</div>
+    <div class="inv-stamp">Sen's Homestay · Cảm ơn quý khách ♥</div>
   </div>`;
 }
 
@@ -757,7 +731,6 @@ function scalePreview() {
   const avail=wrap.parentElement.clientWidth - 28;
   const scale=avail/480;
   inner.style.transform=`scale(${scale})`;
-  // measure actual rendered height
   setTimeout(()=>{
     const h=inner.scrollHeight*scale;
     wrap.style.height=(h||200)+'px';
@@ -771,9 +744,9 @@ async function downloadImage() {
     const src=document.getElementById('inv-export').firstElementChild;
     const canvas=await html2canvas(src,{scale:3,useCORS:true,backgroundColor:'#fff',logging:false,width:480,windowWidth:480});
     const a=document.createElement('a');
-    a.download=`sens-${(document.getElementById('f-guest').value||'invoice').replace(/\s+/g,'-')}.png`;
+    a.download=`hoadon-${(document.getElementById('f-guest').value||'khach').replace(/\s+/g,'-')}.png`;
     a.href=canvas.toDataURL('image/png'); a.click();
-  } catch(e){alert('Error: '+e.message);}
+  } catch(e){alert('Lỗi: '+e.message);}
   finally{setLoad(false);}
 }
 
@@ -783,29 +756,29 @@ async function shareImage() {
     const src=document.getElementById('inv-export').firstElementChild;
     const canvas=await html2canvas(src,{scale:3,useCORS:true,backgroundColor:'#fff',logging:false,width:480,windowWidth:480});
     canvas.toBlob(async(blob)=>{
-      const name=`sens-${(document.getElementById('f-guest').value||'invoice').replace(/\s+/g,'-')}.png`;
+      const name=`hoadon-${(document.getElementById('f-guest').value||'khach').replace(/\s+/g,'-')}.png`;
       const file=new File([blob],name,{type:'image/png'});
       if(navigator.share&&navigator.canShare({files:[file]})){
-        await navigator.share({files:[file],title:"Sen's Invoice"});
+        await navigator.share({files:[file],title:"Sen's Hóa Đơn"});
       } else {
         try{
           await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);
-          alert('✅ Image copied! Paste into Zalo/Messenger.');
-        }catch{alert('Use the Save PNG button to download the image.');}
+          alert('✅ Đã copy ảnh! Dán vào Zalo/Messenger.');
+        }catch{alert('Dùng nút Tải PNG để lưu ảnh.');}
       }
       setLoad(false);
     });
-  }catch(e){alert('Error: '+e.message);setLoad(false);}
+  }catch(e){alert('Lỗi: '+e.message);setLoad(false);}
 }
 
 function setLoad(v){document.getElementById('loading').classList.toggle('show',v);}
 
 function resetForm(){
-  if(!confirm('Reset everything?'))return;
+  if(!confirm('Reset toàn bộ?'))return;
   items=[];idc=0;
   ['f-guest','f-room','f-checkin','f-checkout','f-nights','f-deposit','f-note']
     .forEach(id=>document.getElementById(id).value='');
-  items.push({id:++idc, n:'Room (OTA)', q:1, u:'room', p:0, disc:0, note:''});
+  items.push({id:++idc, n:'Phòng (OTA)', q:1, u:'phòng', p:0, disc:0, note:''});
   drawForms();render();
 }
 
