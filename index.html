@@ -622,7 +622,7 @@ function drawForms() {
           <span style="text-align:right">Price</span><span></span>
         </div>
         <div class="subrow">
-          <input type="text" value="${esc(it.n)}" placeholder="Name..." oninput="upd(${it.id},'n',this.value)">
+          <input type="text" value="${esc(it.n)}" placeholder="Name..." oninput="upd(${it.id},'n',this.value)" style="font-weight:700;color:var(--navy)">
           <input type="text" inputmode="decimal" value="${it.q||''}" placeholder="1" onchange="upd(${it.id},'q',this.value)" oninput="updCalcOnly(${it.id},'q',this.value)" style="text-align:center">
           <input type="text" inputmode="decimal" value="${it.p||''}" placeholder="Price" onchange="upd(${it.id},'p',this.value)" oninput="updCalcOnly(${it.id},'p',this.value)" style="text-align:right">
           <span></span>
