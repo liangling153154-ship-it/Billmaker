@@ -441,6 +441,8 @@ const PRESET_GROUPS = [
     items: [
       {n:'Room (OTA)',q:1,u:'room',p:0},
       {n:'Room (Direct book)',q:1,u:'room',p:0},
+      {n:'Early Check-in (rent motorbike)',q:1,u:'pax',p:50000},
+      {n:'Early Check-in (no motorbike)',q:1,u:'pax',p:100000},
     ]
   },
   {
@@ -497,12 +499,21 @@ const PRESET_GROUPS = [
       {
         label: 'Other Services',
         items: [
-          {n:'Laundry',q:1,u:'kg',p:30000},
-          {n:'Ironing (white shirt)',q:1,u:'pc',p:8000},
-          {n:'Early Check-in (rent motorbike)',q:1,u:'pax',p:50000},
-          {n:'Early Check-in (no motorbike)',q:1,u:'pax',p:100000},
+          {n:'Laundry (White Shirt)',q:1,u:'pc',p:8000},
+          {n:'Laundry (T-shirt / Casual)',q:1,u:'pc',p:5000},
+          {n:'Laundry (Pants)',q:1,u:'pc',p:7000},
+          {n:'Laundry (Jacket / Heavy)',q:1,u:'pc',p:15000},
+          {n:'Laundry (Full Bag)',q:1,u:'kg',p:30000},
         ]
       }
+    ]
+  },
+  {
+    label: '🚕 Transport', key: 'transport',
+    items: [
+      {n:'Taxi',q:1,u:'trip',p:0},
+      {n:'Easy Rider',q:1,u:'trip',p:0},
+      {n:'Bus Ticket',q:1,u:'ticket',p:0},
     ]
   }
 ];

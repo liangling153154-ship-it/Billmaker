@@ -416,6 +416,8 @@ const PRESET_GROUPS = [
     items: [
       {n:'Phòng (OTA)',q:1,u:'phòng',p:0},
       {n:'Phòng (Đặt trực tiếp)',q:1,u:'phòng',p:0},
+      {n:'Nhận phòng sớm (có thuê xe)',q:1,u:'người',p:50000},
+      {n:'Nhận phòng sớm (không thuê xe)',q:1,u:'người',p:100000},
     ]
   },
   {
@@ -472,12 +474,21 @@ const PRESET_GROUPS = [
       {
         label: 'Dịch vụ khác',
         items: [
-          {n:'Giặt đồ',q:1,u:'kg',p:30000},
-          {n:'Ủi áo trắng',q:1,u:'cái',p:8000},
-          {n:'Nhận phòng sớm (có thuê xe)',q:1,u:'người',p:50000},
-          {n:'Nhận phòng sớm (không thuê xe)',q:1,u:'người',p:100000},
+          {n:'Giặt (Áo trắng)',q:1,u:'cái',p:8000},
+          {n:'Giặt (Áo thun / Casual)',q:1,u:'cái',p:5000},
+          {n:'Giặt (Quần)',q:1,u:'cái',p:7000},
+          {n:'Giặt (Áo khoác / Đồ nặng)',q:1,u:'cái',p:15000},
+          {n:'Giặt (Túi đầy)',q:1,u:'kg',p:30000},
         ]
       }
+    ]
+  },
+  {
+    label: '🚕 Di chuyển', key: 'transport',
+    items: [
+      {n:'Taxi',q:1,u:'chuyến',p:0},
+      {n:'Easy Rider',q:1,u:'chuyến',p:0},
+      {n:'Vé xe khách',q:1,u:'vé',p:0},
     ]
   }
 ];
