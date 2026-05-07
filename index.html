@@ -350,8 +350,8 @@ input:focus, select:focus, textarea:focus {
 
 <!-- TABS -->
 <div class="tabs">
-  <div class="tab active" id="tab-form" onclick="switchTab('form')">✏️ Input</div>
-  <div class="tab" id="tab-preview" onclick="switchTab('preview')">👁 Preview</div>
+  <div class="tab active" id="tab-form" onclick="switchTab('form')" data-en="✏️ Input" data-vi="✏️ Nhập liệu">✏️ Input</div>
+  <div class="tab" id="tab-preview" onclick="switchTab('preview')" data-en="👁 Preview" data-vi="👁 Xem trước">👁 Preview</div>
 </div>
 
 <!-- ── FORM PANEL ── -->
@@ -360,22 +360,22 @@ input:focus, select:focus, textarea:focus {
 
   <div class="summary-bar">
     <div>
-      <div class="s-lbl">Total</div>
+      <div class="s-lbl" data-en="Total" data-vi="Tổng tiền">Total</div>
       <div class="s-val" id="s-total">0 đ</div>
       <div class="s-usd" id="s-usd"></div>
     </div>
-    <div style="text-align:right"><div class="s-lbl">Remaining</div><div class="s-val2" id="s-remain">—</div></div>
+    <div style="text-align:right"><div class="s-lbl" data-en="Remaining" data-vi="Còn lại">Remaining</div><div class="s-val2" id="s-remain">—</div></div>
   </div>
 
   <div class="card">
-    <div class="card-head">🏠 Guest Info</div>
+    <div class="card-head" data-en="🏠 Guest Info" data-vi="🏠 Thông tin khách">🏠 Guest Info</div>
     <div class="card-body">
-      <div class="field"><label>Guest Name</label>
-        <input type="text" id="f-guest" placeholder="e.g. Sarah Johnson" oninput="render()"></div>
+      <div class="field"><label data-en="Guest Name" data-vi="Tên khách">Guest Name</label>
+        <input type="text" id="f-guest" placeholder="e.g. Sarah Johnson" data-ph-en="e.g. Sarah Johnson" data-ph-vi="Ví dụ: Nguyễn Văn A" oninput="render()"></div>
       <div class="row2">
-        <div class="field"><label>Room</label>
-          <input type="text" id="f-room" placeholder="Room 103" oninput="render()"></div>
-        <div class="field"><label>Nights</label>
+        <div class="field"><label data-en="Room" data-vi="Phòng">Room</label>
+          <input type="text" id="f-room" placeholder="Room 103" data-ph-en="Room 103" data-ph-vi="Phòng 103" oninput="render()"></div>
+        <div class="field"><label data-en="Nights" data-vi="Số đêm">Nights</label>
           <input type="text" id="f-nights" readonly style="background:#f5f5f5;color:#aaa;font-size:13px"></div>
       </div>
       <div class="row2">
@@ -388,27 +388,27 @@ input:focus, select:focus, textarea:focus {
   </div>
 
   <div class="card">
-    <div class="card-head">⚡ Quick Add</div>
+    <div class="card-head" data-en="⚡ Quick Add" data-vi="⚡ Thêm nhanh">⚡ Quick Add</div>
     <div class="card-body"><div class="presets" id="presets"></div></div>
   </div>
 
   <div class="card">
-    <div class="card-head">📋 Services</div>
+    <div class="card-head" data-en="📋 Services" data-vi="📋 Dịch vụ">📋 Services</div>
     <div class="card-body" style="padding-bottom:8px">
       <div id="items-con"></div>
-      <button class="add-item-btn" onclick="addItem()">+ Add new item</button>
+      <button class="add-item-btn" onclick="addItem()" data-en="+ Add new item" data-vi="+ Thêm mục mới">+ Add new item</button>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-head">💰 Payment & Notes</div>
+    <div class="card-head" data-en="💰 Payment & Notes" data-vi="💰 Thanh toán & Ghi chú">💰 Payment & Notes</div>
     <div class="card-body">
-      <div class="field"><label>Exchange Rate (VND per 1 USD)</label>
+      <div class="field"><label data-en="Exchange Rate (VND per 1 USD)" data-vi="Tỷ giá (VNĐ / 1 USD)">Exchange Rate (VND per 1 USD)</label>
         <input type="number" id="f-rate" value="26323" min="1" inputmode="numeric" oninput="render()"></div>
-      <div class="field"><label>Deposit Received (VND)</label>
+      <div class="field"><label data-en="Deposit Received (VND)" data-vi="Tiền cọc đã nhận (VNĐ)">Deposit Received (VND)</label>
         <input type="number" id="f-deposit" placeholder="0" min="0" inputmode="numeric" oninput="render()"></div>
-      <div class="field"><label>Notes (optional)</label>
-        <textarea id="f-note" rows="2" placeholder="Bus ticket included..." oninput="render()" style="resize:none;font-size:13px"></textarea></div>
+      <div class="field"><label data-en="Notes (optional)" data-vi="Ghi chú (tuỳ chọn)">Notes (optional)</label>
+        <textarea id="f-note" rows="2" placeholder="Bus ticket included..." data-ph-en="Bus ticket included..." data-ph-vi="Đã thanh toán vé xe..." oninput="render()" style="resize:none;font-size:13px"></textarea></div>
     </div>
   </div>
 
@@ -421,15 +421,15 @@ input:focus, select:focus, textarea:focus {
     <div class="preview-wrap" id="preview-wrap">
       <div class="preview-inner" id="preview-inner"></div>
     </div>
-    <p style="font-size:11px;color:#aaa;margin-top:10px;text-align:center">Scaled preview · Full resolution on export</p>
+    <p style="font-size:11px;color:#aaa;margin-top:10px;text-align:center" data-en="Scaled preview · Full resolution on export" data-vi="Xem trước thu nhỏ · Ảnh xuất đầy đủ độ nét">Scaled preview · Full resolution on export</p>
   </div>
 </div>
 
 <!-- BOTTOM BAR -->
 <div class="action-bar">
   <button class="a-btn a-ghost" id="toggle-btn" onclick="toggleTab()">👁</button>
-  <button class="a-btn a-gold" onclick="downloadImage()">⬇ Save PNG</button>
-  <button class="a-btn a-primary" onclick="shareImage()">📤 Share</button>
+  <button class="a-btn a-gold" onclick="downloadImage()" data-en="⬇ Save PNG" data-vi="⬇ Tải PNG">⬇ Save PNG</button>
+  <button class="a-btn a-primary" onclick="shareImage()" data-en="📤 Share" data-vi="📤 Chia sẻ">📤 Share</button>
 </div>
 
 <script>
@@ -822,62 +822,18 @@ function toggleLang() {
 }
 
 function applyLang() {
-  const t = (sel, en, vi) => { const el=document.querySelector(sel); if(el) el.textContent=L(en,vi); };
-  const a = (sel, attr, en, vi) => { const el=document.querySelector(sel); if(el) el[attr]=L(en,vi); };
-
-  // tabs
-  t('#tab-form', '✏️ Input', '✏️ Nhập liệu');
-  t('#tab-preview', '👁 Preview', '👁 Xem trước');
-
-  // summary bar
-  document.querySelector('.s-lbl').textContent = L('Total','Tổng tiền');
-  document.querySelectorAll('.s-lbl')[1].textContent = L('Remaining','Còn lại');
-
-  // card heads
-  const heads = document.querySelectorAll('.card-head');
-  const headMap = [
-    ['🏠 Guest Info','🏠 Thông tin khách'],
-    ['⚡ Quick Add','⚡ Thêm nhanh'],
-    ['📋 Services','📋 Dịch vụ'],
-    ['💰 Payment & Notes','💰 Thanh toán & Ghi chú'],
-  ];
-  heads.forEach((h,i)=>{ if(headMap[i]) h.textContent=L(headMap[i][0],headMap[i][1]); });
-
-  // labels
-  const lblMap = {
-    'Guest Name':'Tên khách', 'Room':'Phòng', 'Nights':'Số đêm',
-    'Exchange Rate (VND per 1 USD)':'Tỷ giá (VNĐ / 1 USD)',
-    'Deposit Received (VND)':'Tiền cọc đã nhận (VNĐ)',
-    'Notes (optional)':'Ghi chú (tuỳ chọn)',
-  };
-  document.querySelectorAll('label').forEach(el=>{
-    const txt=el.textContent.trim();
-    if(lang==='vi' && lblMap[txt]) el.textContent=lblMap[txt];
-    const revMap=Object.fromEntries(Object.entries(lblMap).map(([k,v])=>[v,k]));
-    if(lang==='en' && revMap[txt]) el.textContent=revMap[txt];
+  // all elements with data-en / data-vi → update textContent
+  document.querySelectorAll('[data-en]').forEach(el => {
+    el.textContent = L(el.dataset.en, el.dataset.vi);
   });
-
-  // placeholders
-  a('#f-guest','placeholder',  'e.g. Sarah Johnson','Ví dụ: Nguyễn Văn A');
-  a('#f-room','placeholder',   'Room 103','Phòng 103');
-  a('#f-note','placeholder',   'Bus ticket included...','Đã thanh toán vé xe...');
-
-  // add item btn
-  const addBtn=document.querySelector('.add-item-btn');
-  if(addBtn) addBtn.textContent=L('+ Add new item','+ Thêm mục mới');
-
-  // loading
-  const lp=document.querySelector('#loading p');
-  if(lp) lp.textContent=L('Generating image...','Đang tạo ảnh...');
-
-  // action bar
-  const btns=document.querySelectorAll('.a-btn');
-  btns.forEach(b=>{
-    if(b.textContent.includes('Save PNG')||b.textContent.includes('Tải PNG')) b.textContent=L('⬇ Save PNG','⬇ Tải PNG');
-    if(b.textContent.includes('Share')||b.textContent.includes('Chia sẻ')) b.textContent=L('📤 Share','📤 Chia sẻ');
+  // all inputs/textareas with data-ph-en / data-ph-vi → update placeholder
+  document.querySelectorAll('[data-ph-en]').forEach(el => {
+    el.placeholder = L(el.dataset.phEn, el.dataset.phVi);
   });
-
-  // nights calc
+  // loading text
+  const lp = document.querySelector('#loading p');
+  if(lp) lp.textContent = L('Generating image...','Đang tạo ảnh...');
+  // recalc nights label
   calcNights();
 }
 
