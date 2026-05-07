@@ -342,7 +342,10 @@ input:focus, select:focus, textarea:focus {
     <div class="topbar-icon"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></div>
     <div class="topbar-name"><span>Sen's</span> Invoice</div>
   </div>
-  <button onclick="resetForm()" style="background:none;border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer">🔄 New</button>
+  <div style="display:flex;gap:6px;align-items:center">
+    <button id="lang-btn" onclick="toggleLang()" style="background:none;border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 10px;border-radius:6px;font-size:13px;cursor:pointer">🇻🇳</button>
+    <button onclick="resetForm()" style="background:none;border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer">🔄</button>
+  </div>
 </div>
 
 <!-- TABS -->
@@ -434,6 +437,13 @@ let items = [], idc = 0, curTab = 'form';
 
 const PRESET_GROUPS = [
   {
+    label: '🛏 Room', key: 'room',
+    items: [
+      {n:'Room (OTA)',q:1,u:'room',p:0},
+      {n:'Room (Direct book)',q:1,u:'room',p:0},
+    ]
+  },
+  {
     label: '🏍 Motorbike Rental', key: 'bike',
     items: [
       {n:'Honda Wave Alpha',q:1,u:'day',p:180000},
@@ -489,12 +499,8 @@ const PRESET_GROUPS = [
         items: [
           {n:'Laundry',q:1,u:'kg',p:30000},
           {n:'Ironing (white shirt)',q:1,u:'pc',p:8000},
-        ]
-      },
-      {
-        label: 'Room Rate',
-        items: [
-          {n:'Room (OTA)',q:1,u:'room',p:0},
+          {n:'Early Check-in (rent motorbike)',q:1,u:'pax',p:50000},
+          {n:'Early Check-in (no motorbike)',q:1,u:'pax',p:100000},
         ]
       }
     ]
@@ -598,25 +604,25 @@ function drawForms() {
     const s=iSum(it);
     return `<div class="item-card">
       <div class="item-head">
-        <span class="item-label">Item ${idx+1}</span>
+        <span class="item-label">${L('Item','Mục')} ${idx+1}</span>
         <span class="item-subtotal" id="isub-${it.id}">${fmtD(s)}</span>
         <button class="x-btn" onclick="removeItem(${it.id})">×</button>
       </div>
       <div class="item-body">
         <div class="col-lbl">
-          <span>Service</span><span style="text-align:center">Qty</span>
-          <span style="text-align:right">Price</span><span></span>
+          <span>${L('Service','Dịch vụ')}</span><span style="text-align:center">${L('Qty','SL')}</span>
+          <span style="text-align:right">${L('Price','Đơn giá')}</span><span></span>
         </div>
         <div class="subrow">
-          <input type="text" value="${esc(it.n)}" placeholder="Name..." oninput="upd(${it.id},'n',this.value)">
+          <input type="text" value="${esc(it.n)}" placeholder="${L('Name...','Tên...')}" oninput="upd(${it.id},'n',this.value)">
           <input type="text" inputmode="decimal" value="${it.q||''}" placeholder="1" onchange="upd(${it.id},'q',this.value)" oninput="updCalcOnly(${it.id},'q',this.value)" style="text-align:center">
-          <input type="text" inputmode="decimal" value="${it.p||''}" placeholder="Price" onchange="upd(${it.id},'p',this.value)" oninput="updCalcOnly(${it.id},'p',this.value)" style="text-align:right">
+          <input type="text" inputmode="decimal" value="${it.p||''}" placeholder="${L('Price','Giá')}" onchange="upd(${it.id},'p',this.value)" oninput="updCalcOnly(${it.id},'p',this.value)" style="text-align:right">
           <span></span>
         </div>
-        <textarea rows="1" placeholder="Note (optional)..." style="resize:none;font-size:12px;margin-top:5px;color:#666"
+        <textarea rows="1" placeholder="${L('Note (optional)...','Ghi chú...')}" style="resize:none;font-size:12px;margin-top:5px;color:#666"
           oninput="upd(${it.id},'note',this.value)">${esc(it.note)}</textarea>
         <div class="disc-row">
-          <label>Discount</label>
+          <label>${L('Discount','Giảm giá')}</label>
           <div class="disc-input-wrap">
             <input type="text" inputmode="decimal" min="0" max="100" value="${it.disc||''}" placeholder="0"
               oninput="updDisc(${it.id},this.value)" style="text-align:center">
@@ -624,7 +630,7 @@ function drawForms() {
           </div>
           ${it.disc>0?`<span class="disc-saving">− ${fmtD(iRaw(it)*(it.disc/100))}</span>`:''}
           <div class="unit-wrap">
-            <label>Unit</label>
+            <label>${L('Unit','Đơn vị')}</label>
             <input type="text" value="${esc(it.u)}" placeholder="day" oninput="upd(${it.id},'u',this.value)" style="text-align:center">
           </div>
         </div>
@@ -644,7 +650,7 @@ function calcNights() {
   const co=document.getElementById('f-checkout').value;
   if(ci&&co){
     const d=Math.round((new Date(co)-new Date(ci))/86400000);
-    document.getElementById('f-nights').value=d>0?d+' night'+(d>1?'s':''):'—';
+    document.getElementById('f-nights').value=d>0?(lang==='en'?d+' night'+(d>1?'s':''):d+' đêm'):'—';
   }
 }
 function fmtDate(v){if(!v)return'';const[y,m,d]=v.split('-');return`${d}/${m}/${y}`;}
@@ -678,7 +684,7 @@ function buildHTML(target, sub, dep, rem) {
     const hasMeta = it.n && (it.p>0 || (it.q??1)!==1);
     const meta=hasMeta?`${qtyStr}${it.p>0?' × '+fmt(it.p)+' đ':''}`:null;
     const noteLine=it.note?`<span class="inv-item-note">${it.note}</span>`:'';
-    const discLine=disc>0?`<span class="inv-item-disc">Discount ${disc}% · −${fmt(raw*disc/100)} đ</span>`:'';
+    const discLine=disc>0?`<span class="inv-item-disc">${L('Discount','Giảm')} ${disc}% · −${fmt(raw*disc/100)} đ</span>`:'';
     const total=disc>0?fmt(after):raw>0?fmt(raw):'—';
     return `<tr>
     <td>
@@ -690,16 +696,16 @@ function buildHTML(target, sub, dep, rem) {
   </tr>`;
   }).join('');
 
-  const meta=(ci||co||room)?`<div class="inv-meta">
+  const metaHtml=(ci||co||room)?`<div class="inv-meta">
     ${room?`<span>🛏 <strong>${room}</strong></span>`:''}
-    ${ci?`<span>📅 In: <strong>${fmtDate(ci)}</strong></span>`:''}
-    ${co?`<span>📅 Out: <strong>${fmtDate(co)}</strong></span>`:''}
+    ${ci?`<span>📅 ${L('In','Nhận phòng')}: <strong>${fmtDate(ci)}</strong></span>`:''}
+    ${co?`<span>📅 ${L('Out','Trả phòng')}: <strong>${fmtDate(co)}</strong></span>`:''}
   </div>`:'';
 
   const depHtml=dep>0?`<div class="inv-dep">
-    <div class="inv-dep-row"><span>Subtotal</span><span>${fmt(sub)} đ</span></div>
-    <div class="inv-dep-row"><span>Deposit paid</span><span style="color:#27ae60">− ${fmt(dep)} đ</span></div>
-    <div class="inv-dep-final"><span>Balance due</span><span>${fmt(rem)} đ <span style="font-size:11px;font-weight:400;color:#aaa">${fmtUSD(rem)}</span></span></div>
+    <div class="inv-dep-row"><span>${L('Subtotal','Tổng cộng')}</span><span>${fmt(sub)} đ</span></div>
+    <div class="inv-dep-row"><span>${L('Deposit paid','Đã đặt cọc')}</span><span style="color:#27ae60">− ${fmt(dep)} đ</span></div>
+    <div class="inv-dep-final"><span>${L('Balance due','Còn lại')}</span><span>${fmt(rem)} đ <span style="font-size:11px;font-weight:400;color:#aaa">${fmtUSD(rem)}</span></span></div>
   </div>`:'';
 
   const noteHtml=note?`<div class="inv-note">${note}</div>`:'';
@@ -712,27 +718,27 @@ function buildHTML(target, sub, dep, rem) {
         <div class="inv-logo-c"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></div>
         <div><div class="inv-brand">SEN'S</div><div class="inv-brand-s">Homestay · Cao Bằng</div></div>
       </div>
-      <div class="inv-contact">+84 828 401 668<br>060 Tổ 7, Ngọc Xuân<br>TP. Cao Bằng</div>
+      <div class="inv-contact">+84 822 946 888<br>060 Tổ 7, Ngọc Xuân<br>TP. Cao Bằng</div>
     </div>
     <div class="inv-title-row">
-      <div class="inv-title">Invoice</div>
-      <div class="inv-guest-box"><span class="lbl">Guest</span><strong class="val">${guest}</strong></div>
+      <div class="inv-title">${L('Invoice','Hóa đơn')}</div>
+      <div class="inv-guest-box"><span class="lbl">${L('Guest','Khách')}</span><strong class="val">${guest}</strong></div>
     </div>
-    <div class="inv-disc">Payment in Vietnamese Dong (VND) only</div>
-    ${meta}
+    <div class="inv-disc">${L('Payment in Vietnamese Dong (VND) only','Chỉ thanh toán bằng Việt Nam Đồng (VNĐ)')}</div>
+    ${metaHtml}
     <table class="inv-tbl">
-      <thead><tr><th>Service</th><th style="text-align:right">Amount</th></tr></thead>
+      <thead><tr><th>${L('Service','Dịch vụ')}</th><th style="text-align:right">${L('Amount','Thành tiền')}</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
     <div class="inv-total-box">
-      <div class="inv-tot-lbl">Total</div>
+      <div class="inv-tot-lbl">${L('Total','Tổng')}</div>
       <div class="inv-tot-right">
         <div class="inv-tot-val">${fmt(sub)} đ</div>
         <div class="inv-tot-usd">${fmtUSD(sub)}</div>
       </div>
     </div>
     ${depHtml}${noteHtml}
-    <div class="inv-stamp">Sen's Homestay · Thank you for staying with us ♥</div>
+    <div class="inv-stamp">${L("Sen's Homestay · Thank you for staying with us ♥","Sen's Homestay · Cảm ơn quý khách ♥")}</div>
   </div>`;
 }
 
@@ -795,11 +801,84 @@ async function shareImage() {
 function setLoad(v){document.getElementById('loading').classList.toggle('show',v);}
 
 function resetForm(){
-  if(!confirm('Reset everything?'))return;
+  if(!confirm(L('Reset everything?','Reset toàn bộ?')))return;
   items=[];idc=0;
   ['f-guest','f-room','f-checkin','f-checkout','f-nights','f-deposit','f-note']
     .forEach(id=>document.getElementById(id).value='');
-  addItem();render();
+  items.push({id:++idc, n:L('Room (OTA)','Phòng (OTA)'), q:1, u:'room', p:0, disc:0, note:''});
+  drawForms();render();
+}
+
+// ── LANGUAGE ──
+let lang = 'en';
+function L(en, vi){ return lang==='en'?en:vi; }
+
+function toggleLang() {
+  lang = lang==='en'?'vi':'en';
+  document.getElementById('lang-btn').textContent = lang==='en'?'🇻🇳':'🇬🇧';
+  applyLang();
+  drawForms();
+  render();
+}
+
+function applyLang() {
+  const t = (sel, en, vi) => { const el=document.querySelector(sel); if(el) el.textContent=L(en,vi); };
+  const a = (sel, attr, en, vi) => { const el=document.querySelector(sel); if(el) el[attr]=L(en,vi); };
+
+  // tabs
+  t('#tab-form', '✏️ Input', '✏️ Nhập liệu');
+  t('#tab-preview', '👁 Preview', '👁 Xem trước');
+
+  // summary bar
+  document.querySelector('.s-lbl').textContent = L('Total','Tổng tiền');
+  document.querySelectorAll('.s-lbl')[1].textContent = L('Remaining','Còn lại');
+
+  // card heads
+  const heads = document.querySelectorAll('.card-head');
+  const headMap = [
+    ['🏠 Guest Info','🏠 Thông tin khách'],
+    ['⚡ Quick Add','⚡ Thêm nhanh'],
+    ['📋 Services','📋 Dịch vụ'],
+    ['💰 Payment & Notes','💰 Thanh toán & Ghi chú'],
+  ];
+  heads.forEach((h,i)=>{ if(headMap[i]) h.textContent=L(headMap[i][0],headMap[i][1]); });
+
+  // labels
+  const lblMap = {
+    'Guest Name':'Tên khách', 'Room':'Phòng', 'Nights':'Số đêm',
+    'Exchange Rate (VND per 1 USD)':'Tỷ giá (VNĐ / 1 USD)',
+    'Deposit Received (VND)':'Tiền cọc đã nhận (VNĐ)',
+    'Notes (optional)':'Ghi chú (tuỳ chọn)',
+  };
+  document.querySelectorAll('label').forEach(el=>{
+    const txt=el.textContent.trim();
+    if(lang==='vi' && lblMap[txt]) el.textContent=lblMap[txt];
+    const revMap=Object.fromEntries(Object.entries(lblMap).map(([k,v])=>[v,k]));
+    if(lang==='en' && revMap[txt]) el.textContent=revMap[txt];
+  });
+
+  // placeholders
+  a('#f-guest','placeholder',  'e.g. Sarah Johnson','Ví dụ: Nguyễn Văn A');
+  a('#f-room','placeholder',   'Room 103','Phòng 103');
+  a('#f-note','placeholder',   'Bus ticket included...','Đã thanh toán vé xe...');
+
+  // add item btn
+  const addBtn=document.querySelector('.add-item-btn');
+  if(addBtn) addBtn.textContent=L('+ Add new item','+ Thêm mục mới');
+
+  // loading
+  const lp=document.querySelector('#loading p');
+  if(lp) lp.textContent=L('Generating image...','Đang tạo ảnh...');
+
+  // action bar
+  const btns=document.querySelectorAll('.a-btn');
+  btns.forEach(b=>{
+    if(b.textContent.includes('Save PNG')||b.textContent.includes('Tải PNG')) b.textContent=L('⬇ Save PNG','⬇ Tải PNG');
+    if(b.textContent.includes('Share')||b.textContent.includes('Chia sẻ')) b.textContent=L('📤 Share','📤 Chia sẻ');
+  });
+
+  // nights calc
+  calcNights();
 }
 
 init();
