@@ -303,6 +303,20 @@ input:focus, select:focus, textarea:focus {
   margin-top: 20px; text-align: center;
   font-size: 10px; color: #ccc; letter-spacing: 1px; text-transform: uppercase;
 }
+.inv-qr {
+  margin-top: 14px; padding: 12px; border-radius: 10px;
+  background: linear-gradient(135deg, #fff 0%, var(--gold-bg) 100%);
+  border: 1.5px solid var(--gold-light);
+  display: flex; gap: 12px; align-items: center;
+}
+.inv-qr-img { width: 110px; height: 110px; border-radius: 6px; background: #fff; padding: 4px; flex-shrink: 0; }
+.inv-qr-info { flex: 1; min-width: 0; }
+.inv-qr-title { font-size: 11px; font-weight: 700; color: var(--gold); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+.inv-qr-bank { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 2px; }
+.inv-qr-acc-name { font-size: 11.5px; font-weight: 600; color: var(--navy); }
+.inv-qr-acc-no { font-size: 13px; font-weight: 700; color: var(--gold); letter-spacing: .5px; margin-top: 2px; }
+.inv-qr-amt { font-size: 11px; color: #666; margin-top: 3px; }
+.inv-qr-amt strong { color: var(--red); }
 .sline { display: block; line-height: 1.6; }
 </style>
 </head>
@@ -382,6 +396,12 @@ input:focus, select:focus, textarea:focus {
         <input type="number" id="f-rate" value="26323" min="1" inputmode="numeric" oninput="render()"></div>
       <div class="field"><label>Tiền cọc đã nhận (VNĐ)</label>
         <input type="number" id="f-deposit" placeholder="0" min="0" inputmode="numeric" oninput="render()"></div>
+      <div class="field"><label>QR thanh toán</label>
+        <select id="f-qr" onchange="render()" style="width:100%;padding:10px 12px;border:1.5px solid #e0d8cc;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--text);background:#fafaf8">
+          <option value="none">Không hiện QR</option>
+          <option value="personal">Tài khoản Cá nhân (Tô Thị Phương Linh)</option>
+          <option value="homestay">Tài khoản Homestay (HKD Sen Homestay)</option>
+        </select></div>
       <div class="field"><label>Ghi chú (tuỳ chọn)</label>
         <textarea id="f-note" rows="2" placeholder="Đã thanh toán vé xe..." oninput="render()" style="resize:none;font-size:13px"></textarea></div>
     </div>
@@ -692,6 +712,30 @@ function buildHTML(target, sub, dep, rem) {
 
   const noteHtml=note?`<div class="inv-note">${note}</div>`:'';
 
+  const qrChoice=document.getElementById('f-qr').value;
+  const BANKS={
+    personal: {bin:'970415', acc:'14862868', name:'TO THI PHUONG LINH', label:'Tài khoản Cá nhân'},
+    homestay: {bin:'970415', acc:'102885812778', name:'HDK SEN HOMESTAY', label:'Tài khoản Homestay'},
+  };
+  let qrHtml='';
+  if (qrChoice && qrChoice!=='none' && BANKS[qrChoice]) {
+    const b=BANKS[qrChoice];
+    const payAmt=rem>0?rem:sub;
+    const info=`${guest!=='—'?guest:''}${room?' '+room:''}`.trim()||'Thanh toan';
+    const qrUrl=`https://img.vietqr.io/image/${b.bin}-${b.acc}-compact2.png?amount=${payAmt}&addInfo=${encodeURIComponent(info)}&accountName=${encodeURIComponent(b.name)}`;
+    qrHtml=`<div class="inv-qr">
+      <img class="inv-qr-img" src="${qrUrl}" crossorigin="anonymous" alt="QR">
+      <div class="inv-qr-info">
+        <div class="inv-qr-title">Quét QR để chuyển khoản</div>
+        <div class="inv-qr-bank">VietinBank</div>
+        <div class="inv-qr-acc-name">${b.name}</div>
+        <div class="inv-qr-acc-no">${b.acc}</div>
+        <div class="inv-qr-amt">Số tiền: <strong>${fmt(payAmt)} đ</strong></div>
+        <div class="inv-qr-amt">ND: ${info}</div>
+      </div>
+    </div>`;
+  }
+
   target.innerHTML=`<div class="inv-pad">
     <div class="inv-topbar"></div>
     <div class="inv-corner"></div>
@@ -719,7 +763,7 @@ function buildHTML(target, sub, dep, rem) {
         <div class="inv-tot-usd">${fmtUSD(sub)}</div>
       </div>
     </div>
-    ${depHtml}${noteHtml}
+    ${depHtml}${noteHtml}${qrHtml}
     <div class="inv-stamp">Sen's Homestay · Cảm ơn quý khách ♥</div>
   </div>`;
 }
@@ -746,10 +790,15 @@ function scalePreview() {
 }
 
 // ── EXPORT ──
+async function waitImages(root) {
+  const imgs=root.querySelectorAll('img');
+  await Promise.all([...imgs].map(img=>img.complete?Promise.resolve():new Promise(r=>{img.onload=img.onerror=r;})));
+}
 async function downloadImage() {
   setLoad(true);
   try {
     const src=document.getElementById('inv-export').firstElementChild;
+    await waitImages(src);
     const canvas=await html2canvas(src,{scale:3,useCORS:true,backgroundColor:'#fff',logging:false,width:480,windowWidth:480});
     const a=document.createElement('a');
     a.download=`hoadon-${(document.getElementById('f-guest').value||'khach').replace(/\s+/g,'-')}.png`;
@@ -762,6 +811,7 @@ async function shareImage() {
   setLoad(true);
   try {
     const src=document.getElementById('inv-export').firstElementChild;
+    await waitImages(src);
     const canvas=await html2canvas(src,{scale:3,useCORS:true,backgroundColor:'#fff',logging:false,width:480,windowWidth:480});
     canvas.toBlob(async(blob)=>{
       const name=`hoadon-${(document.getElementById('f-guest').value||'khach').replace(/\s+/g,'-')}.png`;
@@ -786,6 +836,7 @@ function resetForm(){
   items=[];idc=0;
   ['f-guest','f-room','f-checkin','f-checkout','f-nights','f-deposit','f-note']
     .forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-qr').value='none';
   items.push({id:++idc, n:'Phòng (OTA)', q:1, u:'phòng', p:0, disc:0, note:''});
   drawForms();render();
 }
