@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -L \"https://script.google.com/macros/s/AKfycbwNGLkdVW9f5EXB5Np8SISUj6pB61GPnDHqlZX2Y5EG88KNG0Y7IOf5QVYMcOKzupbs/exec?action=ping\")",
+      "Bash(curl -s -L \"https://script.google.com/macros/s/AKfycbwNGLkdVW9f5EXB5Np8SISUj6pB61GPnDHqlZX2Y5EG88KNG0Y7IOf5QVYMcOKzupbs/exec?action=list\")"
+    ]
+  }
+}

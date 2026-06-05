@@ -317,6 +317,23 @@ input:focus, select:focus, textarea:focus {
 .inv-qr-acc-no { font-size: 13px; font-weight: 700; color: var(--gold); letter-spacing: .5px; margin-top: 2px; }
 .inv-qr-amt { font-size: 11px; color: #666; margin-top: 3px; }
 .inv-qr-amt strong { color: var(--red); }
+.inv-deposit-badge {
+  background: linear-gradient(90deg, var(--gold) 0%, #d4a839 100%);
+  color: #fff; padding: 8px 14px; border-radius: 6px;
+  font-weight: 800; text-align: center; font-size: 12px;
+  letter-spacing: 1.8px; margin-bottom: 12px; text-transform: uppercase;
+  box-shadow: 0 2px 6px rgba(201,168,76,.3);
+}
+.inv-dep-after {
+  background: var(--gold-bg); border: 1px solid var(--gold-light);
+  border-radius: 8px; padding: 10px 14px; font-size: 12.5px; margin-top: 10px;
+}
+.inv-dep-after .inv-dep-row { display: flex; justify-content: space-between; margin-bottom: 4px; color: #666; }
+.inv-dep-after .inv-dep-rem {
+  font-size: 11.5px; font-style: italic; color: var(--red);
+  border-top: 1px dashed var(--gold-light); padding-top: 7px; margin-top: 5px;
+  display: flex; justify-content: space-between;
+}
 .sline { display: block; line-height: 1.6; }
 </style>
 </head>
@@ -396,7 +413,14 @@ input:focus, select:focus, textarea:focus {
     <div class="card-body">
       <div class="field"><label>Tỷ giá (VNĐ / 1 USD)</label>
         <input type="number" id="f-rate" value="26323" min="1" inputmode="numeric" oninput="render()"></div>
-      <div class="field"><label>Tiền cọc đã nhận (VNĐ)</label>
+      <div class="field"><label>Loại hóa đơn</label>
+        <select id="f-inv-type" onchange="onTypeChange()" style="width:100%;padding:10px 12px;border:1.5px solid #e0d8cc;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--text);background:#fafaf8">
+          <option value="full">Hóa đơn đầy đủ</option>
+          <option value="deposit">Hóa đơn đặt cọc</option>
+        </select></div>
+      <div class="field" id="f-pct-wrap" style="display:none"><label>% Đặt cọc</label>
+        <input type="number" id="f-dep-pct" value="50" min="1" max="100" inputmode="numeric" oninput="render()"></div>
+      <div class="field" id="f-deposit-wrap"><label>Tiền cọc đã nhận (VNĐ)</label>
         <input type="number" id="f-deposit" placeholder="0" min="0" inputmode="numeric" oninput="render()"></div>
       <div class="field"><label>QR thanh toán</label>
         <select id="f-qr" onchange="render()" style="width:100%;padding:10px 12px;border:1.5px solid #e0d8cc;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--text);background:#fafaf8">
@@ -621,6 +645,8 @@ function newInvoiceId() {
 function collectPayload(status='draft') {
   const sub=items.reduce((s,i)=>s+iSum(i),0);
   const dep=parseFloat(document.getElementById('f-deposit').value)||0;
+  const invType=document.getElementById('f-inv-type').value;
+  const depPct=parseFloat(document.getElementById('f-dep-pct').value)||50;
   return {
     id: currentInvoiceId,
     status,
@@ -638,6 +664,8 @@ function collectPayload(status='draft') {
     rate:     getRate(),
     subtotal: sub,
     balance:  sub-dep,
+    invoice_type: invType,
+    deposit_pct: invType==='deposit'?depPct:0,
   };
 }
 
@@ -653,11 +681,15 @@ function applyPayload(p) {
   document.getElementById('f-deposit').value  = p.deposit||'';
   document.getElementById('f-note').value     = S(p.note);
   document.getElementById('f-qr').value       = S(p.qr_account)||'none';
+  document.getElementById('f-inv-type').value = S(p.invoice_type)||'full';
+  document.getElementById('f-dep-pct').value  = p.deposit_pct>0?p.deposit_pct:50;
   if (p.rate) document.getElementById('f-rate').value = p.rate;
   items=[]; idc=0;
   (p.items||[]).forEach(it=>items.push({id:++idc, n:S(it.n), q:it.q??1, u:S(it.u), p:it.p||0, disc:it.disc||0, note:S(it.note)}));
   if (items.length===0) items.push({id:++idc, n:'Phòng (OTA)', q:1, u:'phòng', p:0, disc:0, note:''});
   calcNights();
+  document.getElementById('f-pct-wrap').style.display=document.getElementById('f-inv-type').value==='deposit'?'block':'none';
+  document.getElementById('f-deposit-wrap').style.display=document.getElementById('f-inv-type').value==='deposit'?'none':'block';
   drawForms(); render();
   isApplying = false;
 }
@@ -776,6 +808,10 @@ function clearCurrentDraft() {
   items=[]; idc=0;
   ['f-guest','f-room','f-checkin','f-checkout','f-nights','f-deposit','f-note'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-qr').value='none';
+  document.getElementById('f-inv-type').value='full';
+  document.getElementById('f-dep-pct').value='50';
+  document.getElementById('f-pct-wrap').style.display='none';
+  document.getElementById('f-deposit-wrap').style.display='block';
   items.push({id:++idc, n:'Phòng (OTA)', q:1, u:'phòng', p:0, disc:0, note:''});
   drawForms(); render();
   switchTab('form');
@@ -825,7 +861,7 @@ function init() {
     drawForms(); render();
   }
   window.addEventListener('resize', () => { if(curTab==='preview') scalePreview(); });
-  ['f-guest','f-room','f-checkin','f-checkout','f-deposit','f-note','f-qr','f-rate'].forEach(id=>{
+  ['f-guest','f-room','f-checkin','f-checkout','f-deposit','f-note','f-qr','f-rate','f-dep-pct','f-inv-type'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.addEventListener('input', ()=>scheduleSync());
   });
 }
@@ -953,6 +989,11 @@ function buildHTML(target, sub, dep, rem) {
   const co=document.getElementById('f-checkout').value;
   const room=document.getElementById('f-room').value;
   const note=document.getElementById('f-note').value;
+  const invType=document.getElementById('f-inv-type').value;
+  const depPct=Math.min(100,Math.max(1,parseFloat(document.getElementById('f-dep-pct').value)||50));
+  const isDeposit=invType==='deposit';
+  const depAmt=isDeposit?Math.round(sub*depPct/100):0;
+  const depRem=isDeposit?sub-depAmt:0;
 
   const rows=items.map((it,idx)=>{
     const raw=iRaw(it), disc=it.disc||0, after=iSum(it);
@@ -978,11 +1019,35 @@ function buildHTML(target, sub, dep, rem) {
     ${co?`<span>📅 Trả phòng: <strong>${fmtDate(co)}</strong></span>`:''}
   </div>`:'';
 
-  const depHtml=dep>0?`<div class="inv-dep">
-    <div class="inv-dep-row"><span>Tổng cộng</span><span>${fmt(sub)} đ</span></div>
-    <div class="inv-dep-row"><span>Đã đặt cọc</span><span style="color:#27ae60">− ${fmt(dep)} đ</span></div>
-    <div class="inv-dep-final"><span>Còn lại thanh toán</span><span>${fmt(rem)} đ <span style="font-size:11px;font-weight:400;color:#aaa">${fmtUSD(rem)}</span></span></div>
-  </div>`:'';
+  const badgeHtml=isDeposit?`<div class="inv-deposit-badge">📌 Hóa đơn đặt cọc ${depPct}%</div>`:'';
+
+  let totalHtml, depHtml='';
+  if (isDeposit) {
+    totalHtml=`<div class="inv-total-box">
+      <div class="inv-tot-lbl">Cần cọc ${depPct}%</div>
+      <div class="inv-tot-right">
+        <div class="inv-tot-val">${fmt(depAmt)} đ</div>
+        <div class="inv-tot-usd">${fmtUSD(depAmt)}</div>
+      </div>
+    </div>
+    <div class="inv-dep-after">
+      <div class="inv-dep-row"><span>Tổng hóa đơn</span><span>${fmt(sub)} đ</span></div>
+      <div class="inv-dep-rem"><span>Còn lại</span><span>${fmt(depRem)} đ · thanh toán khi nhận phòng</span></div>
+    </div>`;
+  } else {
+    totalHtml=`<div class="inv-total-box">
+      <div class="inv-tot-lbl">Tổng</div>
+      <div class="inv-tot-right">
+        <div class="inv-tot-val">${fmt(sub)} đ</div>
+        <div class="inv-tot-usd">${fmtUSD(sub)}</div>
+      </div>
+    </div>`;
+    depHtml=dep>0?`<div class="inv-dep">
+      <div class="inv-dep-row"><span>Tổng cộng</span><span>${fmt(sub)} đ</span></div>
+      <div class="inv-dep-row"><span>Đã đặt cọc</span><span style="color:#27ae60">− ${fmt(dep)} đ</span></div>
+      <div class="inv-dep-final"><span>Còn lại thanh toán</span><span>${fmt(rem)} đ <span style="font-size:11px;font-weight:400;color:#aaa">${fmtUSD(rem)}</span></span></div>
+    </div>`:'';
+  }
 
   const noteHtml=note?`<div class="inv-note">${note}</div>`:'';
 
@@ -994,13 +1059,14 @@ function buildHTML(target, sub, dep, rem) {
   let qrHtml='';
   if (qrChoice && qrChoice!=='none' && BANKS[qrChoice]) {
     const b=BANKS[qrChoice];
-    const payAmt=rem>0?rem:sub;
-    const info=`${guest!=='—'?guest:''}${room?' '+room:''}`.trim()||'Thanh toan';
+    const payAmt=isDeposit?depAmt:(rem>0?rem:sub);
+    const prefix=isDeposit?'COC ':'';
+    const info=`${prefix}${guest!=='—'?guest:''}${room?' '+room:''}`.trim()||'Thanh toan';
     const qrUrl=`https://img.vietqr.io/image/${b.bin}-${b.acc}-compact2.png?amount=${payAmt}&addInfo=${encodeURIComponent(info)}&accountName=${encodeURIComponent(b.name)}`;
     qrHtml=`<div class="inv-qr">
       <img class="inv-qr-img" src="${qrUrl}" crossorigin="anonymous" alt="QR">
       <div class="inv-qr-info">
-        <div class="inv-qr-title">Quét QR để chuyển khoản</div>
+        <div class="inv-qr-title">${isDeposit?'Quét QR để đặt cọc':'Quét QR để chuyển khoản'}</div>
         <div class="inv-qr-bank">VietinBank</div>
         <div class="inv-qr-acc-name">${b.name}</div>
         <div class="inv-qr-acc-no">${b.acc}</div>
@@ -1024,22 +1090,25 @@ function buildHTML(target, sub, dep, rem) {
       <div class="inv-title">Hóa đơn</div>
       <div class="inv-guest-box"><span class="lbl">Khách</span><strong class="val">${guest}</strong></div>
     </div>
+    ${badgeHtml}
     <div class="inv-disc">Chỉ thanh toán bằng Việt Nam Đồng (VNĐ)</div>
     ${metaHtml}
     <table class="inv-tbl">
       <thead><tr><th>Dịch vụ</th><th style="text-align:right">Thành tiền</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
-    <div class="inv-total-box">
-      <div class="inv-tot-lbl">Tổng</div>
-      <div class="inv-tot-right">
-        <div class="inv-tot-val">${fmt(sub)} đ</div>
-        <div class="inv-tot-usd">${fmtUSD(sub)}</div>
-      </div>
-    </div>
+    ${totalHtml}
     ${depHtml}${noteHtml}${qrHtml}
     <div class="inv-stamp">Sen's Homestay · Cảm ơn quý khách ♥</div>
   </div>`;
+}
+
+function onTypeChange() {
+  const t=document.getElementById('f-inv-type').value;
+  document.getElementById('f-pct-wrap').style.display=t==='deposit'?'block':'none';
+  document.getElementById('f-deposit-wrap').style.display=t==='deposit'?'none':'block';
+  if (t==='deposit') document.getElementById('f-deposit').value='';
+  render();
 }
 
 // ── PREVIEW SCALING ──
@@ -1075,7 +1144,8 @@ async function downloadImage() {
     await waitImages(src);
     const canvas=await html2canvas(src,{scale:3,useCORS:true,backgroundColor:'#fff',logging:false,width:480,windowWidth:480});
     const a=document.createElement('a');
-    a.download=`hoadon-${(document.getElementById('f-guest').value||'khach').replace(/\s+/g,'-')}.png`;
+    const prefix=document.getElementById('f-inv-type').value==='deposit'?'hoadon-coc':'hoadon';
+    a.download=`${prefix}-${(document.getElementById('f-guest').value||'khach').replace(/\s+/g,'-')}.png`;
     a.href=canvas.toDataURL('image/png'); a.click();
     syncNow('final');
   } catch(e){alert('Lỗi: '+e.message);}
@@ -1089,7 +1159,8 @@ async function shareImage() {
     await waitImages(src);
     const canvas=await html2canvas(src,{scale:3,useCORS:true,backgroundColor:'#fff',logging:false,width:480,windowWidth:480});
     canvas.toBlob(async(blob)=>{
-      const name=`hoadon-${(document.getElementById('f-guest').value||'khach').replace(/\s+/g,'-')}.png`;
+      const prefix=document.getElementById('f-inv-type').value==='deposit'?'hoadon-coc':'hoadon';
+      const name=`${prefix}-${(document.getElementById('f-guest').value||'khach').replace(/\s+/g,'-')}.png`;
       const file=new File([blob],name,{type:'image/png'});
       if(navigator.share&&navigator.canShare({files:[file]})){
         await navigator.share({files:[file],title:"Sen's Hóa Đơn"});
@@ -1115,6 +1186,10 @@ function resetForm(){
   ['f-guest','f-room','f-checkin','f-checkout','f-nights','f-deposit','f-note']
     .forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-qr').value='none';
+  document.getElementById('f-inv-type').value='full';
+  document.getElementById('f-dep-pct').value='50';
+  document.getElementById('f-pct-wrap').style.display='none';
+  document.getElementById('f-deposit-wrap').style.display='block';
   items.push({id:++idc, n:'Phòng (OTA)', q:1, u:'phòng', p:0, disc:0, note:''});
   drawForms();render();
 }

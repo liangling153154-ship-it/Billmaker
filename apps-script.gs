@@ -26,7 +26,7 @@ const HEADERS = [
   'id','status','lang','created_at','updated_at',
   'guest','room','checkin','checkout','nights',
   'items_json','deposit','note','qr_account','rate',
-  'subtotal','balance'
+  'subtotal','balance','invoice_type','deposit_pct'
 ];
 const SHEET_NAME = 'Invoices';
 
@@ -37,6 +37,12 @@ function getSheet() {
     sh = ss.insertSheet(SHEET_NAME);
     sh.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
     sh.setFrozenRows(1);
+    sh.getRange(1, 1, 1, HEADERS.length).setFontWeight('bold').setBackground('#0a3a5a').setFontColor('#fff');
+    return sh;
+  }
+  const cur = sh.getLastColumn() ? sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0] : [];
+  if (cur.length < HEADERS.length || HEADERS.some((h, i) => cur[i] !== h)) {
+    sh.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
     sh.getRange(1, 1, 1, HEADERS.length).setFontWeight('bold').setBackground('#0a3a5a').setFontColor('#fff');
   }
   return sh;
@@ -115,6 +121,8 @@ function saveInvoice(p) {
     p.rate || 26323,
     p.subtotal || 0,
     p.balance || 0,
+    p.invoice_type || 'full',
+    p.deposit_pct || 0,
   ];
   const r = findRow(sh, id);
   if (r > 0) {

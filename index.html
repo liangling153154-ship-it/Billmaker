@@ -327,6 +327,23 @@ input:focus, select:focus, textarea:focus {
   margin-top: 20px; text-align: center;
   font-size: 10px; color: #ccc; letter-spacing: 1px; text-transform: uppercase;
 }
+.inv-deposit-badge {
+  background: linear-gradient(90deg, var(--gold) 0%, #d4a839 100%);
+  color: #fff; padding: 8px 14px; border-radius: 6px;
+  font-weight: 800; text-align: center; font-size: 12px;
+  letter-spacing: 1.8px; margin-bottom: 12px; text-transform: uppercase;
+  box-shadow: 0 2px 6px rgba(201,168,76,.3);
+}
+.inv-dep-after {
+  background: var(--gold-bg); border: 1px solid var(--gold-light);
+  border-radius: 8px; padding: 10px 14px; font-size: 12.5px; margin-top: 10px;
+}
+.inv-dep-after .inv-dep-row { display: flex; justify-content: space-between; margin-bottom: 4px; color: #666; }
+.inv-dep-after .inv-dep-rem {
+  font-size: 11.5px; font-style: italic; color: var(--red);
+  border-top: 1px dashed var(--gold-light); padding-top: 7px; margin-top: 5px;
+  display: flex; justify-content: space-between;
+}
 
 .sline { display: block; line-height: 1.6; }
 </style>
@@ -407,7 +424,14 @@ input:focus, select:focus, textarea:focus {
     <div class="card-body">
       <div class="field"><label>Exchange Rate (VND per 1 USD)</label>
         <input type="number" id="f-rate" value="26323" min="1" inputmode="numeric" oninput="render()"></div>
-      <div class="field"><label>Deposit Received (VND)</label>
+      <div class="field"><label>Invoice Type</label>
+        <select id="f-inv-type" onchange="onTypeChange()" style="width:100%;padding:10px 12px;border:1.5px solid #e0d8cc;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--text);background:#fafaf8">
+          <option value="full">Full Invoice</option>
+          <option value="deposit">Deposit Invoice</option>
+        </select></div>
+      <div class="field" id="f-pct-wrap" style="display:none"><label>Deposit %</label>
+        <input type="number" id="f-dep-pct" value="50" min="1" max="100" inputmode="numeric" oninput="render()"></div>
+      <div class="field" id="f-deposit-wrap"><label>Deposit Received (VND)</label>
         <input type="number" id="f-deposit" placeholder="0" min="0" inputmode="numeric" oninput="render()"></div>
       <div class="field"><label>Notes (optional)</label>
         <textarea id="f-note" rows="2" placeholder="Bus ticket included..." oninput="render()" style="resize:none;font-size:13px"></textarea></div>
@@ -626,6 +650,8 @@ function newInvoiceId() {
 function collectPayload(status='draft') {
   const sub=items.reduce((s,i)=>s+iSum(i),0);
   const dep=parseFloat(document.getElementById('f-deposit').value)||0;
+  const invType=document.getElementById('f-inv-type').value;
+  const depPct=parseFloat(document.getElementById('f-dep-pct').value)||50;
   return {
     id: currentInvoiceId,
     status,
@@ -643,6 +669,8 @@ function collectPayload(status='draft') {
     rate:     getRate(),
     subtotal: sub,
     balance:  sub-dep,
+    invoice_type: invType,
+    deposit_pct: invType==='deposit'?depPct:0,
   };
 }
 
@@ -657,11 +685,15 @@ function applyPayload(p) {
   document.getElementById('f-checkout').value = S(p.checkout);
   document.getElementById('f-deposit').value  = p.deposit||'';
   document.getElementById('f-note').value     = S(p.note);
+  document.getElementById('f-inv-type').value = S(p.invoice_type)||'full';
+  document.getElementById('f-dep-pct').value  = p.deposit_pct>0?p.deposit_pct:50;
   if (p.rate) document.getElementById('f-rate').value = p.rate;
   items=[]; idc=0;
   (p.items||[]).forEach(it=>items.push({id:++idc, n:S(it.n), q:it.q??1, u:S(it.u), p:it.p||0, disc:it.disc||0, note:S(it.note)}));
   if (items.length===0) items.push({id:++idc, n:'Room (OTA)', q:1, u:'room', p:0, disc:0, note:''});
   calcNights();
+  document.getElementById('f-pct-wrap').style.display=document.getElementById('f-inv-type').value==='deposit'?'block':'none';
+  document.getElementById('f-deposit-wrap').style.display=document.getElementById('f-inv-type').value==='deposit'?'none':'block';
   drawForms(); render();
   isApplying = false;
 }
@@ -780,6 +812,10 @@ function clearCurrentDraft() {
   items=[]; idc=0;
   ['f-guest','f-room','f-checkin','f-checkout','f-nights','f-deposit','f-note'].forEach(id=>document.getElementById(id).value='');
   items.push({id:++idc, n:'Room (OTA)', q:1, u:'room', p:0, disc:0, note:''});
+  document.getElementById('f-inv-type').value='full';
+  document.getElementById('f-dep-pct').value='50';
+  document.getElementById('f-pct-wrap').style.display='none';
+  document.getElementById('f-deposit-wrap').style.display='block';
   drawForms(); render();
   switchTab('form');
   showSync('🗑️ Draft cleared');
@@ -828,7 +864,7 @@ function init() {
     drawForms(); render();
   }
   window.addEventListener('resize', () => { if(curTab==='preview') scalePreview(); });
-  ['f-guest','f-room','f-checkin','f-checkout','f-deposit','f-note','f-rate'].forEach(id=>{
+  ['f-guest','f-room','f-checkin','f-checkout','f-deposit','f-note','f-rate','f-dep-pct','f-inv-type'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.addEventListener('input', ()=>scheduleSync());
   });
 }
@@ -957,6 +993,11 @@ function buildHTML(target, sub, dep, rem) {
   const co=document.getElementById('f-checkout').value;
   const room=document.getElementById('f-room').value;
   const note=document.getElementById('f-note').value;
+  const invType=document.getElementById('f-inv-type').value;
+  const depPct=Math.min(100,Math.max(1,parseFloat(document.getElementById('f-dep-pct').value)||50));
+  const isDeposit=invType==='deposit';
+  const depAmt=isDeposit?Math.round(sub*depPct/100):0;
+  const depRem=isDeposit?sub-depAmt:0;
 
   const rows=items.map((it,idx)=>{
     const raw=iRaw(it), disc=it.disc||0, after=iSum(it);
@@ -982,11 +1023,35 @@ function buildHTML(target, sub, dep, rem) {
     ${co?`<span>📅 Out: <strong>${fmtDate(co)}</strong></span>`:''}
   </div>`:'';
 
-  const depHtml=dep>0?`<div class="inv-dep">
-    <div class="inv-dep-row"><span>Subtotal</span><span>${fmt(sub)} đ</span></div>
-    <div class="inv-dep-row"><span>Deposit paid</span><span style="color:#27ae60">− ${fmt(dep)} đ</span></div>
-    <div class="inv-dep-final"><span>Balance due</span><span>${fmt(rem)} đ <span style="font-size:11px;font-weight:400;color:#aaa">${fmtUSD(rem)}</span></span></div>
-  </div>`:'';
+  const badgeHtml=isDeposit?`<div class="inv-deposit-badge">📌 Deposit Invoice ${depPct}%</div>`:'';
+
+  let totalHtml, depHtml='';
+  if (isDeposit) {
+    totalHtml=`<div class="inv-total-box">
+      <div class="inv-tot-lbl">Deposit ${depPct}%</div>
+      <div class="inv-tot-right">
+        <div class="inv-tot-val">${fmt(depAmt)} đ</div>
+        <div class="inv-tot-usd">${fmtUSD(depAmt)}</div>
+      </div>
+    </div>
+    <div class="inv-dep-after">
+      <div class="inv-dep-row"><span>Invoice Total</span><span>${fmt(sub)} đ</span></div>
+      <div class="inv-dep-rem"><span>Balance</span><span>${fmt(depRem)} đ · due at check-in</span></div>
+    </div>`;
+  } else {
+    totalHtml=`<div class="inv-total-box">
+      <div class="inv-tot-lbl">Total</div>
+      <div class="inv-tot-right">
+        <div class="inv-tot-val">${fmt(sub)} đ</div>
+        <div class="inv-tot-usd">${fmtUSD(sub)}</div>
+      </div>
+    </div>`;
+    depHtml=dep>0?`<div class="inv-dep">
+      <div class="inv-dep-row"><span>Subtotal</span><span>${fmt(sub)} đ</span></div>
+      <div class="inv-dep-row"><span>Deposit paid</span><span style="color:#27ae60">− ${fmt(dep)} đ</span></div>
+      <div class="inv-dep-final"><span>Balance due</span><span>${fmt(rem)} đ <span style="font-size:11px;font-weight:400;color:#aaa">${fmtUSD(rem)}</span></span></div>
+    </div>`:'';
+  }
 
   const noteHtml=note?`<div class="inv-note">${note}</div>`:'';
 
@@ -1004,22 +1069,25 @@ function buildHTML(target, sub, dep, rem) {
       <div class="inv-title">Invoice</div>
       <div class="inv-guest-box"><span class="lbl">Guest</span><strong class="val">${guest}</strong></div>
     </div>
+    ${badgeHtml}
     <div class="inv-disc">Payment in Vietnamese Dong (VND) only</div>
     ${metaHtml}
     <table class="inv-tbl">
       <thead><tr><th>Service</th><th style="text-align:right">Amount</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
-    <div class="inv-total-box">
-      <div class="inv-tot-lbl">Total</div>
-      <div class="inv-tot-right">
-        <div class="inv-tot-val">${fmt(sub)} đ</div>
-        <div class="inv-tot-usd">${fmtUSD(sub)}</div>
-      </div>
-    </div>
+    ${totalHtml}
     ${depHtml}${noteHtml}
     <div class="inv-stamp">Sen's Homestay · Thank you for staying with us ♥</div>
   </div>`;
+}
+
+function onTypeChange() {
+  const t=document.getElementById('f-inv-type').value;
+  document.getElementById('f-pct-wrap').style.display=t==='deposit'?'block':'none';
+  document.getElementById('f-deposit-wrap').style.display=t==='deposit'?'none':'block';
+  if (t==='deposit') document.getElementById('f-deposit').value='';
+  render();
 }
 
 // ── PREVIEW SCALING ──
@@ -1051,7 +1119,8 @@ async function downloadImage() {
     const src=document.getElementById('inv-export').firstElementChild;
     const canvas=await html2canvas(src,{scale:3,useCORS:true,backgroundColor:'#fff',logging:false,width:480,windowWidth:480});
     const a=document.createElement('a');
-    a.download=`sens-${(document.getElementById('f-guest').value||'invoice').replace(/\s+/g,'-')}.png`;
+    const prefix=document.getElementById('f-inv-type').value==='deposit'?'invoice-deposit':'invoice';
+    a.download=`${prefix}-${(document.getElementById('f-guest').value||'guest').replace(/\s+/g,'-')}.png`;
     a.href=canvas.toDataURL('image/png'); a.click();
     syncNow('final');
   } catch(e){alert('Error: '+e.message);}
@@ -1064,7 +1133,8 @@ async function shareImage() {
     const src=document.getElementById('inv-export').firstElementChild;
     const canvas=await html2canvas(src,{scale:3,useCORS:true,backgroundColor:'#fff',logging:false,width:480,windowWidth:480});
     canvas.toBlob(async(blob)=>{
-      const name=`sens-${(document.getElementById('f-guest').value||'invoice').replace(/\s+/g,'-')}.png`;
+      const prefix=document.getElementById('f-inv-type').value==='deposit'?'invoice-deposit':'invoice';
+      const name=`${prefix}-${(document.getElementById('f-guest').value||'guest').replace(/\s+/g,'-')}.png`;
       const file=new File([blob],name,{type:'image/png'});
       if(navigator.share&&navigator.canShare({files:[file]})){
         await navigator.share({files:[file],title:"Sen's Invoice"});
@@ -1090,6 +1160,10 @@ function resetForm(){
   ['f-guest','f-room','f-checkin','f-checkout','f-nights','f-deposit','f-note']
     .forEach(id=>document.getElementById(id).value='');
   items.push({id:++idc, n:'Room (OTA)', q:1, u:'room', p:0, disc:0, note:''});
+  document.getElementById('f-inv-type').value='full';
+  document.getElementById('f-dep-pct').value='50';
+  document.getElementById('f-pct-wrap').style.display='none';
+  document.getElementById('f-deposit-wrap').style.display='block';
   drawForms();render();
 }
 
