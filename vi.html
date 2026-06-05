@@ -341,7 +341,9 @@ input:focus, select:focus, textarea:focus {
 <div class="tabs">
   <div class="tab active" id="tab-form" onclick="switchTab('form')">✏️ Nhập liệu</div>
   <div class="tab" id="tab-preview" onclick="switchTab('preview')">👁 Xem trước</div>
+  <div class="tab" id="tab-history" onclick="switchTab('history')">📋 Lịch sử</div>
 </div>
+<div id="sync-indicator" style="position:fixed;top:8px;right:8px;background:rgba(10,58,90,.9);color:#fff;padding:4px 10px;border-radius:12px;font-size:11px;z-index:100;display:none">💾 Đang lưu...</div>
 
 <!-- ── FORM PANEL ── -->
 <div class="panel active" id="panel-form">
@@ -417,6 +419,44 @@ input:focus, select:focus, textarea:focus {
       <div class="preview-inner" id="preview-inner"></div>
     </div>
     <p style="font-size:11px;color:#aaa;margin-top:10px;text-align:center">Xem trước thu nhỏ · Ảnh xuất đầy đủ độ nét</p>
+  </div>
+</div>
+
+<!-- ── HISTORY PANEL ── -->
+<div class="panel" id="panel-history">
+  <div class="form-body">
+    <div class="card">
+      <div class="card-head">⚙️ Cấu hình Google Sheets</div>
+      <div class="card-body">
+        <div class="field"><label>Apps Script Web App URL</label>
+          <input type="text" id="f-sheet-url" placeholder="https://script.google.com/macros/s/.../exec" oninput="saveConfig()" style="font-size:12px"></div>
+        <div style="display:flex;gap:6px">
+          <button onclick="testConn()" style="flex:1;padding:10px;border:1.5px solid var(--gold);background:var(--gold-bg);color:var(--navy);border-radius:8px;font-weight:600;cursor:pointer">🔌 Kiểm tra kết nối</button>
+          <button onclick="loadHistory()" style="flex:1;padding:10px;border:1.5px solid var(--gold);background:var(--gold);color:#fff;border-radius:8px;font-weight:600;cursor:pointer">🔄 Tải lại</button>
+        </div>
+        <div id="conn-status" style="margin-top:6px;font-size:11px;color:#888"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">🧹 Quản lý dữ liệu</div>
+      <div class="card-body">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button onclick="clearCurrentDraft()" style="padding:10px;border:1.5px solid #ddd;background:#fff;border-radius:8px;font-weight:600;cursor:pointer;text-align:left">🗑️ Xóa nháp hiện tại <span style="font-weight:400;color:#888;font-size:11px">· Reset form về trắng</span></button>
+          <button onclick="backupAll()" style="padding:10px;border:1.5px solid #ddd;background:#fff;border-radius:8px;font-weight:600;cursor:pointer;text-align:left">📥 Tải sao lưu JSON <span style="font-weight:400;color:#888;font-size:11px">· Backup toàn bộ lịch sử</span></button>
+          <button onclick="clearAllHistory()" style="padding:10px;border:1.5px solid #e57373;background:#fff5f5;color:#c62828;border-radius:8px;font-weight:600;cursor:pointer;text-align:left">🧹 Xóa toàn bộ lịch sử <span style="font-weight:400;font-size:11px">· Không thể hoàn tác</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">📋 Lịch sử hóa đơn <span id="hist-count" style="font-weight:400;color:#aaa;font-size:11px"></span></div>
+      <div class="card-body">
+        <div id="hist-list" style="display:flex;flex-direction:column;gap:6px">
+          <p style="color:#aaa;text-align:center;padding:20px 0;font-size:13px">Chưa tải lịch sử. Nhấn "🔄 Tải lại"</p>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -513,12 +553,13 @@ const PRESET_GROUPS = [
 // ── TABS ──
 function switchTab(t) {
   curTab = t;
-  ['form','preview'].forEach(x => {
+  ['form','preview','history'].forEach(x => {
     document.getElementById('panel-'+x).classList.toggle('active', x===t);
     document.getElementById('tab-'+x).classList.toggle('active', x===t);
   });
   document.getElementById('toggle-btn').textContent = t==='form' ? '👁' : '✏️';
   if (t==='preview') { renderPreview(); scalePreview(); }
+  if (t==='history' && getSheetURL()) loadHistory();
 }
 function toggleTab() { switchTab(curTab==='form'?'preview':'form'); }
 
@@ -549,12 +590,242 @@ function toggleGroup(key) {
   head.classList.toggle('open', open);
 }
 
+// ════════════════════════════════════════════════════════════
+//  GOOGLE SHEETS SYNC
+// ════════════════════════════════════════════════════════════
+const LS_URL    = 'sens_sheet_url_v1';
+const LS_DRAFT  = 'sens_draft_vi_v1';
+const LS_INV_ID = 'sens_inv_id_vi_v1';
+let currentInvoiceId = null;
+let currentCreatedAt = null;
+let saveTimer = null;
+let isApplying = false;
+
+function getSheetURL() { return (localStorage.getItem(LS_URL) || '').trim(); }
+function saveConfig() {
+  localStorage.setItem(LS_URL, document.getElementById('f-sheet-url').value.trim());
+  document.getElementById('conn-status').textContent = '';
+}
+function showSync(msg, ms=1200) {
+  const el=document.getElementById('sync-indicator');
+  el.textContent=msg; el.style.display='block';
+  clearTimeout(showSync._t);
+  showSync._t=setTimeout(()=>{el.style.display='none';},ms);
+}
+
+function newInvoiceId() {
+  return Date.now()+'-'+Math.random().toString(36).slice(2,8);
+}
+
+function collectPayload(status='draft') {
+  const sub=items.reduce((s,i)=>s+iSum(i),0);
+  const dep=parseFloat(document.getElementById('f-deposit').value)||0;
+  return {
+    id: currentInvoiceId,
+    status,
+    lang: 'vi',
+    created_at: currentCreatedAt || new Date().toISOString(),
+    guest:    document.getElementById('f-guest').value||'',
+    room:     document.getElementById('f-room').value||'',
+    checkin:  document.getElementById('f-checkin').value||'',
+    checkout: document.getElementById('f-checkout').value||'',
+    nights:   parseInt(document.getElementById('f-nights').value)||0,
+    items:    items.map(it=>({n:it.n,q:it.q,u:it.u,p:it.p,disc:it.disc,note:it.note})),
+    deposit:  dep,
+    note:     document.getElementById('f-note').value||'',
+    qr_account: document.getElementById('f-qr').value||'none',
+    rate:     getRate(),
+    subtotal: sub,
+    balance:  sub-dep,
+  };
+}
+
+function applyPayload(p) {
+  isApplying = true;
+  currentInvoiceId = p.id || newInvoiceId();
+  currentCreatedAt = p.created_at || new Date().toISOString();
+  document.getElementById('f-guest').value    = p.guest||'';
+  document.getElementById('f-room').value     = p.room||'';
+  document.getElementById('f-checkin').value  = p.checkin||'';
+  document.getElementById('f-checkout').value = p.checkout||'';
+  document.getElementById('f-deposit').value  = p.deposit||'';
+  document.getElementById('f-note').value     = p.note||'';
+  document.getElementById('f-qr').value       = p.qr_account||'none';
+  if (p.rate) document.getElementById('f-rate').value = p.rate;
+  items=[]; idc=0;
+  (p.items||[]).forEach(it=>items.push({id:++idc, n:it.n||'', q:it.q??1, u:it.u||'', p:it.p||0, disc:it.disc||0, note:it.note||''}));
+  if (items.length===0) items.push({id:++idc, n:'Phòng (OTA)', q:1, u:'phòng', p:0, disc:0, note:''});
+  calcNights();
+  drawForms(); render();
+  isApplying = false;
+}
+
+function saveLocal() {
+  try { localStorage.setItem(LS_DRAFT, JSON.stringify(collectPayload())); } catch {}
+  if (currentInvoiceId) localStorage.setItem(LS_INV_ID, currentInvoiceId);
+}
+
+function scheduleSync(status='draft') {
+  if (isApplying) return;
+  saveLocal();
+  if (!getSheetURL()) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>syncNow(status), 2000);
+}
+
+async function syncNow(status='draft') {
+  const url=getSheetURL(); if(!url) return;
+  showSync('💾 Đang lưu...', 600);
+  try {
+    const payload=collectPayload(status);
+    const res=await fetch(url, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({action:'save', payload}),
+    });
+    const data=await res.json();
+    if (data.id) {
+      currentInvoiceId = data.id;
+      localStorage.setItem(LS_INV_ID, currentInvoiceId);
+    }
+    showSync('✅ Đã lưu');
+  } catch (e) {
+    showSync('⚠️ Lỗi lưu');
+  }
+}
+
+async function testConn() {
+  const url=getSheetURL();
+  const el=document.getElementById('conn-status');
+  if(!url){el.textContent='⚠️ Chưa nhập URL';el.style.color='#c62828';return;}
+  el.textContent='⏳ Đang kiểm tra...';el.style.color='#888';
+  try {
+    const r=await fetch(url+'?action=ping');
+    const d=await r.json();
+    if(d.ok){el.textContent='✅ Kết nối OK ('+new Date(d.ts).toLocaleString('vi-VN')+')';el.style.color='#27ae60';}
+    else {el.textContent='⚠️ '+(d.error||'lỗi');el.style.color='#c62828';}
+  } catch(e){el.textContent='⚠️ Lỗi: '+e.message;el.style.color='#c62828';}
+}
+
+async function loadHistory() {
+  const url=getSheetURL();
+  const con=document.getElementById('hist-list');
+  if(!url){con.innerHTML='<p style="color:#c62828;padding:10px;font-size:13px">⚠️ Chưa cấu hình URL ở trên</p>';return;}
+  con.innerHTML='<p style="color:#aaa;text-align:center;padding:20px 0;font-size:13px">⏳ Đang tải...</p>';
+  try {
+    const r=await fetch(url+'?action=list&limit=100');
+    const d=await r.json();
+    if (!d.items || d.items.length===0) {
+      con.innerHTML='<p style="color:#aaa;text-align:center;padding:20px 0;font-size:13px">Chưa có hóa đơn nào</p>';
+      document.getElementById('hist-count').textContent='';
+      return;
+    }
+    document.getElementById('hist-count').textContent='· '+d.items.length+' hóa đơn';
+    con.innerHTML=d.items.map(it=>{
+      const t=new Date(it.updated_at);
+      const dt=t.toLocaleDateString('vi-VN')+' '+t.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
+      const badge=it.status==='final'?'<span style="background:#27ae60;color:#fff;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700">XONG</span>':'<span style="background:#aaa;color:#fff;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:700">NHÁP</span>';
+      const isCurrent = it.id===currentInvoiceId?'border:2px solid var(--gold);background:var(--gold-bg)':'border:1px solid #e0d8cc;background:#fff';
+      return `<div style="${isCurrent};border-radius:8px;padding:9px 10px;display:flex;align-items:center;gap:8px">
+        <div style="flex:1;min-width:0;cursor:pointer" onclick="loadInvoice('${it.id}')">
+          <div style="font-weight:700;color:var(--navy);font-size:13px">${esc(it.guest||'(Không tên)')} ${badge}</div>
+          <div style="font-size:11px;color:#888">${it.room?'🛏 '+esc(it.room)+' · ':''}${dt}</div>
+          <div style="font-size:12px;color:var(--gold);font-weight:700;margin-top:1px">${fmtD(it.subtotal||0)}</div>
+        </div>
+        <button onclick="delInvoice('${it.id}', event)" style="background:none;border:none;color:#bbb;font-size:18px;cursor:pointer;padding:4px 8px">×</button>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    con.innerHTML='<p style="color:#c62828;padding:10px;font-size:13px">⚠️ Lỗi: '+e.message+'</p>';
+  }
+}
+
+async function loadInvoice(id) {
+  const url=getSheetURL(); if(!url) return;
+  showSync('⏳ Đang tải...', 600);
+  try {
+    const r=await fetch(url+'?action=get&id='+encodeURIComponent(id));
+    const d=await r.json();
+    if (d.item) {
+      applyPayload(d.item);
+      switchTab('form');
+      showSync('✅ Đã tải');
+    } else { alert('Không tìm thấy hóa đơn'); }
+  } catch(e) { alert('Lỗi: '+e.message); }
+}
+
+async function delInvoice(id, ev) {
+  if (ev) ev.stopPropagation();
+  if (!confirm('Xóa hóa đơn này khỏi lịch sử?')) return;
+  const url=getSheetURL(); if(!url) return;
+  try {
+    await fetch(url, {method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'delete',id})});
+    if (id===currentInvoiceId) { currentInvoiceId=newInvoiceId(); }
+    loadHistory();
+  } catch(e) { alert('Lỗi: '+e.message); }
+}
+
+function clearCurrentDraft() {
+  if (!confirm('Xóa nháp hiện tại và bắt đầu hóa đơn mới?')) return;
+  localStorage.removeItem(LS_DRAFT);
+  localStorage.removeItem(LS_INV_ID);
+  currentInvoiceId = newInvoiceId();
+  currentCreatedAt = new Date().toISOString();
+  items=[]; idc=0;
+  ['f-guest','f-room','f-checkin','f-checkout','f-nights','f-deposit','f-note'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-qr').value='none';
+  items.push({id:++idc, n:'Phòng (OTA)', q:1, u:'phòng', p:0, disc:0, note:''});
+  drawForms(); render();
+  switchTab('form');
+  showSync('🗑️ Đã xóa nháp');
+}
+
+async function clearAllHistory() {
+  if (!confirm('⚠️ Xóa TOÀN BỘ lịch sử hóa đơn trên Google Sheet?\n\nHành động này KHÔNG THỂ HOÀN TÁC.')) return;
+  const code=prompt('Để xác nhận, nhập: XOA');
+  if (code !== 'XOA') { alert('Đã hủy.'); return; }
+  const url=getSheetURL(); if(!url){alert('Chưa cấu hình URL');return;}
+  try {
+    const r=await fetch(url, {method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'clearAll',confirm:'XOA'})});
+    const d=await r.json();
+    if (d.ok) { alert('✅ Đã xóa '+(d.cleared||0)+' hóa đơn.'); loadHistory(); }
+    else alert('Lỗi: '+(d.error||'unknown'));
+  } catch(e) { alert('Lỗi: '+e.message); }
+}
+
+async function backupAll() {
+  const url=getSheetURL(); if(!url){alert('Chưa cấu hình URL');return;}
+  showSync('📥 Đang tải...', 600);
+  try {
+    const r=await fetch(url+'?action=export');
+    const d=await r.json();
+    const blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='sens-backup-'+new Date().toISOString().slice(0,10)+'.json';
+    a.click();
+    showSync('✅ Đã tải backup');
+  } catch(e) { alert('Lỗi: '+e.message); }
+}
+
 // ── INIT ──
 function init() {
   buildPresets();
-  items.push({id:++idc, n:'Phòng (OTA)', q:1, u:'phòng', p:0, disc:0, note:''});
-  drawForms(); render();
+  document.getElementById('f-sheet-url').value = getSheetURL();
+  const draft = localStorage.getItem(LS_DRAFT);
+  if (draft) {
+    try { applyPayload(JSON.parse(draft)); }
+    catch { items.push({id:++idc, n:'Phòng (OTA)', q:1, u:'phòng', p:0, disc:0, note:''}); drawForms(); render(); }
+  } else {
+    currentInvoiceId = newInvoiceId();
+    currentCreatedAt = new Date().toISOString();
+    items.push({id:++idc, n:'Phòng (OTA)', q:1, u:'phòng', p:0, disc:0, note:''});
+    drawForms(); render();
+  }
   window.addEventListener('resize', () => { if(curTab==='preview') scalePreview(); });
+  ['f-guest','f-room','f-checkin','f-checkout','f-deposit','f-note','f-qr','f-rate'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.addEventListener('input', ()=>scheduleSync());
+  });
 }
 
 // ── ITEMS ──
@@ -670,6 +941,7 @@ function render() {
   document.getElementById('s-remain').textContent=dep>0?fmtD(rem):'—';
   buildHTML(document.getElementById('inv-export'), sub, dep, rem);
   if(curTab==='preview') renderPreview();
+  scheduleSync();
 }
 
 // ── BUILD INVOICE HTML ──
@@ -803,6 +1075,7 @@ async function downloadImage() {
     const a=document.createElement('a');
     a.download=`hoadon-${(document.getElementById('f-guest').value||'khach').replace(/\s+/g,'-')}.png`;
     a.href=canvas.toDataURL('image/png'); a.click();
+    syncNow('final');
   } catch(e){alert('Lỗi: '+e.message);}
   finally{setLoad(false);}
 }
@@ -824,6 +1097,7 @@ async function shareImage() {
           alert('✅ Đã copy ảnh! Dán vào Zalo/Messenger.');
         }catch{alert('Dùng nút Tải PNG để lưu ảnh.');}
       }
+      syncNow('final');
       setLoad(false);
     });
   }catch(e){alert('Lỗi: '+e.message);setLoad(false);}
@@ -832,7 +1106,9 @@ async function shareImage() {
 function setLoad(v){document.getElementById('loading').classList.toggle('show',v);}
 
 function resetForm(){
-  if(!confirm('Reset toàn bộ?'))return;
+  if(!confirm('Reset toàn bộ? (Hóa đơn mới sẽ được tạo)'))return;
+  currentInvoiceId = newInvoiceId();
+  currentCreatedAt = new Date().toISOString();
   items=[];idc=0;
   ['f-guest','f-room','f-checkin','f-checkout','f-nights','f-deposit','f-note']
     .forEach(id=>document.getElementById(id).value='');
