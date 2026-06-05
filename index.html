@@ -648,17 +648,18 @@ function collectPayload(status='draft') {
 
 function applyPayload(p) {
   isApplying = true;
-  currentInvoiceId = p.id || newInvoiceId();
-  currentCreatedAt = p.created_at || new Date().toISOString();
-  document.getElementById('f-guest').value    = p.guest||'';
-  document.getElementById('f-room').value     = p.room||'';
-  document.getElementById('f-checkin').value  = p.checkin||'';
-  document.getElementById('f-checkout').value = p.checkout||'';
+  const S = v => v==null?'':String(v);
+  currentInvoiceId = S(p.id) || newInvoiceId();
+  currentCreatedAt = S(p.created_at) || new Date().toISOString();
+  document.getElementById('f-guest').value    = S(p.guest);
+  document.getElementById('f-room').value     = S(p.room);
+  document.getElementById('f-checkin').value  = S(p.checkin);
+  document.getElementById('f-checkout').value = S(p.checkout);
   document.getElementById('f-deposit').value  = p.deposit||'';
-  document.getElementById('f-note').value     = p.note||'';
+  document.getElementById('f-note').value     = S(p.note);
   if (p.rate) document.getElementById('f-rate').value = p.rate;
   items=[]; idc=0;
-  (p.items||[]).forEach(it=>items.push({id:++idc, n:it.n||'', q:it.q??1, u:it.u||'', p:it.p||0, disc:it.disc||0, note:it.note||''}));
+  (p.items||[]).forEach(it=>items.push({id:++idc, n:S(it.n), q:it.q??1, u:S(it.u), p:it.p||0, disc:it.disc||0, note:S(it.note)}));
   if (items.length===0) items.push({id:++idc, n:'Room (OTA)', q:1, u:'room', p:0, disc:0, note:''});
   calcNights();
   drawForms(); render();
@@ -917,7 +918,7 @@ function drawForms() {
   }).join('');
 }
 
-function esc(s){return(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function esc(s){return String(s==null?'':s).replace(/"/g,'&quot;').replace(/</g,'&lt;');}
 
 // ── UTILS ──
 function fmt(n){return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
