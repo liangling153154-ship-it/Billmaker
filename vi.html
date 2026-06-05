@@ -421,7 +421,8 @@ input:focus, select:focus, textarea:focus {
       <div class="field" id="f-pct-wrap" style="display:none"><label>% Đặt cọc</label>
         <input type="number" id="f-dep-pct" value="50" min="1" max="100" inputmode="numeric" oninput="render()"></div>
       <div class="field" id="f-deposit-wrap"><label>Tiền cọc đã nhận (VNĐ)</label>
-        <input type="number" id="f-deposit" placeholder="0" min="0" inputmode="numeric" oninput="render()"></div>
+        <input type="number" id="f-deposit" placeholder="0" min="0" inputmode="numeric" oninput="render()">
+        <div id="dep-hint" style="display:none;font-size:11px;color:var(--gold);margin-top:4px;font-style:italic">💡 Tự điền từ hóa đơn cọc trước đó · có thể sửa</div></div>
       <div class="field"><label>QR thanh toán</label>
         <select id="f-qr" onchange="render()" style="width:100%;padding:10px 12px;border:1.5px solid #e0d8cc;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--text);background:#fafaf8">
           <option value="none">Không hiện QR</option>
@@ -625,6 +626,7 @@ let currentInvoiceId = null;
 let currentCreatedAt = null;
 let saveTimer = null;
 let isApplying = false;
+let loadedDepositPaid = 0;
 
 function getSheetURL() { return (localStorage.getItem(LS_URL) || DEFAULT_SHEET_URL).trim(); }
 function saveConfig() {
@@ -683,6 +685,8 @@ function applyPayload(p) {
   document.getElementById('f-qr').value       = S(p.qr_account)||'none';
   document.getElementById('f-inv-type').value = S(p.invoice_type)||'full';
   document.getElementById('f-dep-pct').value  = p.deposit_pct>0?p.deposit_pct:50;
+  loadedDepositPaid = (p.invoice_type==='deposit' && p.deposit_pct>0)
+    ? Math.round((p.subtotal||0)*(p.deposit_pct||0)/100) : 0;
   if (p.rate) document.getElementById('f-rate').value = p.rate;
   items=[]; idc=0;
   (p.items||[]).forEach(it=>items.push({id:++idc, n:S(it.n), q:it.q??1, u:S(it.u), p:it.p||0, disc:it.disc||0, note:S(it.note)}));
@@ -812,6 +816,8 @@ function clearCurrentDraft() {
   document.getElementById('f-dep-pct').value='50';
   document.getElementById('f-pct-wrap').style.display='none';
   document.getElementById('f-deposit-wrap').style.display='block';
+  loadedDepositPaid=0;
+  const h=document.getElementById('dep-hint'); if(h) h.style.display='none';
   items.push({id:++idc, n:'Phòng (OTA)', q:1, u:'phòng', p:0, disc:0, note:''});
   drawForms(); render();
   switchTab('form');
@@ -1107,7 +1113,13 @@ function onTypeChange() {
   const t=document.getElementById('f-inv-type').value;
   document.getElementById('f-pct-wrap').style.display=t==='deposit'?'block':'none';
   document.getElementById('f-deposit-wrap').style.display=t==='deposit'?'none':'block';
-  if (t==='deposit') document.getElementById('f-deposit').value='';
+  const depEl=document.getElementById('f-deposit');
+  const hintEl=document.getElementById('dep-hint');
+  if (t==='deposit') { depEl.value=''; if(hintEl) hintEl.style.display='none'; }
+  else if (t==='full' && loadedDepositPaid>0 && !depEl.value) {
+    depEl.value=loadedDepositPaid;
+    if(hintEl) hintEl.style.display='block';
+  }
   render();
 }
 
@@ -1190,6 +1202,8 @@ function resetForm(){
   document.getElementById('f-dep-pct').value='50';
   document.getElementById('f-pct-wrap').style.display='none';
   document.getElementById('f-deposit-wrap').style.display='block';
+  loadedDepositPaid=0;
+  const h=document.getElementById('dep-hint'); if(h) h.style.display='none';
   items.push({id:++idc, n:'Phòng (OTA)', q:1, u:'phòng', p:0, disc:0, note:''});
   drawForms();render();
 }
