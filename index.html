@@ -598,6 +598,7 @@ function toggleGroup(key) {
 // ════════════════════════════════════════════════════════════
 //  GOOGLE SHEETS SYNC
 // ════════════════════════════════════════════════════════════
+const DEFAULT_SHEET_URL = 'https://script.google.com/macros/s/AKfycbwNGLkdVW9f5EXB5Np8SISUj6pB61GPnDHqlZX2Y5EG88KNG0Y7IOf5QVYMcOKzupbs/exec';
 const LS_URL    = 'sens_sheet_url_v1';
 const LS_DRAFT  = 'sens_draft_en_v1';
 const LS_INV_ID = 'sens_inv_id_en_v1';
@@ -606,7 +607,7 @@ let currentCreatedAt = null;
 let saveTimer = null;
 let isApplying = false;
 
-function getSheetURL() { return (localStorage.getItem(LS_URL) || '').trim(); }
+function getSheetURL() { return (localStorage.getItem(LS_URL) || DEFAULT_SHEET_URL).trim(); }
 function saveConfig() {
   localStorage.setItem(LS_URL, document.getElementById('f-sheet-url').value.trim());
   document.getElementById('conn-status').textContent = '';
