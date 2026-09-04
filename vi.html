@@ -299,6 +299,19 @@ input:focus, select:focus, textarea:focus {
   padding: 8px 12px; border-radius: 6px;
   background: #fafafa; border-left: 3px solid var(--gold-light);
 }
+.inv-policy {
+  margin-top: 12px; padding: 10px 12px; border-radius: 6px;
+  background: #fcfbf9; border: 1px solid #eee6da;
+  font-size: 9.5px; line-height: 1.65; color: #777;
+}
+.inv-policy-t {
+  font-size: 9.5px; font-weight: 700; color: var(--navy);
+  letter-spacing: .6px; text-transform: uppercase; margin-bottom: 5px;
+}
+.inv-policy ul { margin: 0 0 6px; padding-left: 14px; }
+.inv-policy li { margin-bottom: 2px; }
+.inv-policy p  { margin: 0 0 6px; }
+.inv-policy p:last-child { margin: 0; }
 .inv-stamp {
   margin-top: 20px; text-align: center;
   font-size: 10px; color: #ccc; letter-spacing: 1px; text-transform: uppercase;
@@ -1057,6 +1070,17 @@ function buildHTML(target, sub, dep, rem) {
 
   const noteHtml=note?`<div class="inv-note">${note}</div>`:'';
 
+  const policyHtml=isDeposit?`<div class="inv-policy">
+    <div class="inv-policy-t">Quy định đổi / huỷ phòng</div>
+    <ul>
+      <li>Đổi/huỷ phòng trước 7 ngày: hoàn 100% phí đặt cọc.</li>
+      <li>Đổi/huỷ phòng trước 5 ngày: hoàn 50% phí đặt cọc.</li>
+      <li>Home không nhận đổi/huỷ phòng khi còn dưới 5 ngày.</li>
+    </ul>
+    <p>Homestay hỗ trợ dời lịch 01 lần. Sau khi sắp xếp được thời gian đặt lịch tiếp theo, quý khách báo trước 05 ngày để home sắp xếp phòng. Sau khi đã dời lịch, home sẽ không hỗ trợ huỷ lịch và hoàn cọc.</p>
+    <p>Homestay cảm ơn bạn.</p>
+  </div>`:'';
+
   const qrChoice=document.getElementById('f-qr').value;
   const BANKS={
     personal: {bin:'970415', acc:'14862868', name:'TO THI PHUONG LINH', label:'Tài khoản Cá nhân'},
@@ -1104,7 +1128,7 @@ function buildHTML(target, sub, dep, rem) {
       <tbody>${rows}</tbody>
     </table>
     ${totalHtml}
-    ${depHtml}${noteHtml}${qrHtml}
+    ${depHtml}${noteHtml}${qrHtml}${policyHtml}
     <div class="inv-stamp">Sen's Homestay · Cảm ơn quý khách ♥</div>
   </div>`;
 }
