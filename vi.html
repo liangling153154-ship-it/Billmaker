@@ -511,11 +511,27 @@ let items = [], idc = 0, curTab = 'form';
 const PRESET_GROUPS = [
   {
     label: '🛏 Phòng', key: 'room',
-    items: [
-      {n:'Phòng (OTA)',q:1,u:'phòng',p:0},
-      {n:'Phòng (Đặt trực tiếp)',q:1,u:'phòng',p:0},
-      {n:'Nhận phòng sớm (có thuê xe)',q:1,u:'người',p:50000},
-      {n:'Nhận phòng sớm (không thuê xe)',q:1,u:'người',p:100000},
+    subs: [
+      {
+        label: 'Chọn phòng',
+        items: [
+          {lbl:'101 Beige',        n:'The Beige Room',            q:1,u:'đêm',p:0},
+          {lbl:'105 Pine',         n:'The Pine Room',             q:1,u:'đêm',p:0},
+          {lbl:'106 Sunset',       n:'The Sunset Room',           q:1,u:'đêm',p:0},
+          {lbl:'102 Family',       n:'Family Room No View',       q:1,u:'đêm',p:0},
+          {lbl:'104 Family River', n:'Family Room With River View',q:1,u:'đêm',p:0},
+          {lbl:'103 Deluxe',       n:'Deluxe Family Room',        q:1,u:'đêm',p:0},
+        ]
+      },
+      {
+        label: 'Khác',
+        items: [
+          {n:'Phòng (OTA)',q:1,u:'phòng',p:0},
+          {n:'Phòng (Đặt trực tiếp)',q:1,u:'phòng',p:0},
+          {n:'Nhận phòng sớm (có thuê xe)',q:1,u:'người',p:50000},
+          {n:'Nhận phòng sớm (không thuê xe)',q:1,u:'người',p:100000},
+        ]
+      }
     ]
   },
   {
@@ -619,7 +635,7 @@ function buildPresets() {
   }).join('');
 }
 function chipHTML(p) {
-  return `<div class="chip" onclick='addPreset(${JSON.stringify(p)})'>${p.n}</div>`;
+  return `<div class="chip" onclick='addPreset(${JSON.stringify(p)})'>${p.lbl||p.n}</div>`;
 }
 function toggleGroup(key) {
   const body = document.getElementById('pg-'+key);
