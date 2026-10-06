@@ -297,6 +297,12 @@ input:focus, select:focus, textarea:focus {
 }
 .bus-box input:last-child { margin-bottom: 0; }
 .bus-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.bus-chips { display: flex; gap: 5px; margin: -2px 0 7px; flex-wrap: wrap; }
+.bus-chips span {
+  font-size: 10.5px; padding: 3px 9px; border-radius: 12px; cursor: pointer;
+  background: var(--gold-bg); border: 1px solid var(--gold-light); color: var(--navy);
+}
+.bus-chips span:active { background: var(--navy); color: #fff; }
 .inv-total-box {
   background: var(--navy); border-radius: 10px;
   padding: 14px 16px; margin-top: 16px;
@@ -729,7 +735,7 @@ function collectPayload(status='draft') {
     subtotal: sub,
     balance:  sub-dep,
     invoice_type: invType,
-    deposit_pct: invType==='deposit'?depPct:0,
+    deposit_pct: (invType==='deposit'||invType==='bus')?depPct:0,
   };
 }
 
@@ -753,7 +759,8 @@ function applyPayload(p) {
   if (p.rate) document.getElementById('f-rate').value = p.rate;
   items=[]; idc=0;
   (p.items||[]).forEach(it=>items.push({id:++idc, n:S(it.n), q:it.q??1, u:S(it.u), p:it.p||0, disc:it.disc||0, note:S(it.note), bus:it.bus||null}));
-  if (items.length===0) items.push({id:++idc, n:'Phòng (OTA)', q:1, u:'phòng', p:0, disc:0, note:''});
+  const starter=S(p.invoice_type)==='bus'?BUS_ITEM:ROOM_ITEM;
+  if (items.length===0) items.push({id:++idc, n:starter.n, q:1, u:starter.u, p:0, disc:0, note:''});
   calcNights();
   syncTypeUI();
   const qn=S(p.qr_note).trim();
@@ -944,8 +951,22 @@ function addPreset(p) {
   items.push({id:++idc, n:p.n, q:p.q, u:p.u||'', p:p.p, disc:0, note:''});
   drawForms(); render();
 }
+const ROOM_ITEM={n:'Phòng (OTA)', u:'phòng'};
+const BUS_ITEM ={n:'Vé xe', u:'chuyến'};
+function isBusType(){ return document.getElementById('f-inv-type').value==='bus'; }
+// swap an untouched starter line between the room and bus defaults
+function swapStarterItems(toBus) {
+  const from=toBus?ROOM_ITEM:BUS_ITEM, to=toBus?BUS_ITEM:ROOM_ITEM;
+  items.forEach(it=>{
+    if (it.n===from.n && it.u===from.u && !it.p && (it.q??1)===1 && !it.note && !it.disc) {
+      it.n=to.n; it.u=to.u;
+    }
+  });
+}
 function addItem() {
-  items.push({id:++idc, n:'', q:1, u:'', p:0, disc:0, note:''});
+  items.push(isBusType()
+    ? {id:++idc, n:BUS_ITEM.n, q:1, u:BUS_ITEM.u, p:0, disc:0, note:''}
+    : {id:++idc, n:'', q:1, u:'', p:0, disc:0, note:''});
   drawForms(); render();
 }
 function removeItem(id) {
@@ -968,18 +989,42 @@ function updCalcOnly(id,f,v) {
   if(el) el.textContent=fmtD(iSum(it));
   render();
 }
+const BUS_PLACES=[
+  {lbl:"Sen's Homestay", v:"Sen's Homestay Cao Bằng"},
+  {lbl:'Mỹ Đình',        v:'Bến xe Mỹ Đình, Hà Nội'},
+  {lbl:'Giáp Bát',       v:'Bến xe Giáp Bát, Hà Nội'},
+];
+const BUS_DEFAULT={time:'20:30', from:'Bến xe Mỹ Đình, Hà Nội', to:"Sen's Homestay Cao Bằng"};
+function busChips(id,f) {
+  return `<div class="bus-chips">${BUS_PLACES.map((p,i)=>`<span onclick="setBusPlace(${id},'${f}',${i})">${p.lbl}</span>`).join('')}</div>`;
+}
+function setBusPlace(id,f,i) {
+  const it=items.find(x=>x.id===id);
+  if(!it.bus) it.bus={};
+  it.bus[f]=BUS_PLACES[i].v;
+  drawForms(); render();
+}
+function swapBus(id) {
+  const it=items.find(x=>x.id===id);
+  if(!it.bus) return;
+  const f=it.bus.from; it.bus.from=it.bus.to; it.bus.to=f;
+  drawForms(); render();
+}
 function busFormHTML(it, idx) {
   if (document.getElementById('f-inv-type').value!=='bus') return '';
-  const b=it.bus||{};
+  if (!it.bus) it.bus=Object.assign({}, BUS_DEFAULT);
+  const b=it.bus;
   return `<div class="bus-box">
-    <div class="bus-box-head"><span>🚌 Thông tin chuyến</span>${idx>0?`<span class="bus-copy" onclick="copyBusFromPrev(${it.id})">📋 Chép từ mục trên</span>`:''}</div>
+    <div class="bus-box-head"><span>🚌 Thông tin chuyến</span><span style="display:flex;gap:10px">${idx>0?`<span class="bus-copy" onclick="copyBusFromPrev(${it.id})">📋 Chép từ mục trên</span>`:''}<span class="bus-copy" onclick="swapBus(${it.id})">⇄ Đổi chiều</span></span></div>
     <input type="text" value="${esc(b.co)}" placeholder="🚌 Nhà xe" oninput="updBus(${it.id},'co',this.value)">
     <div class="bus-row2">
       <input type="date" value="${esc(b.date)}" oninput="updBus(${it.id},'date',this.value)">
       <input type="time" value="${esc(b.time)}" oninput="updBus(${it.id},'time',this.value)">
     </div>
     <input type="text" value="${esc(b.from)}" placeholder="📍 Điểm đón" oninput="updBus(${it.id},'from',this.value)">
+    ${busChips(it.id,'from')}
     <input type="text" value="${esc(b.to)}" placeholder="📍 Điểm trả" oninput="updBus(${it.id},'to',this.value)">
+    ${busChips(it.id,'to')}
     <input type="text" value="${esc(b.tk)}" placeholder="🎫 Loại vé" oninput="updBus(${it.id},'tk',this.value)">
   </div>`;
 }
@@ -1088,7 +1133,8 @@ function defaultQRNote() {
   const g=document.getElementById('f-guest').value.trim();
   const r=document.getElementById('f-room').value.trim();
   const t=document.getElementById('f-inv-type').value;
-  const prefix=t==='deposit'?'COC ':t==='bus'?'VE XE ':'';
+  const busPct=parseFloat(document.getElementById('f-dep-pct').value)||50;
+  const prefix=t==='deposit'?'COC ':t==='bus'?(busPct<100?'COC VE XE ':'VE XE '):'';
   return `${prefix}${g}${r&&t!=='bus'?' '+r:''}`.trim() || 'Thanh toan';
 }
 function syncQRNote() {
@@ -1134,8 +1180,9 @@ function buildHTML(target, sub, dep, rem) {
   const isDeposit=invType==='deposit';
   const isBus=invType==='bus';
   const phone=document.getElementById('f-phone').value;
-  const depAmt=isDeposit?Math.round(sub*depPct/100):0;
-  const depRem=isDeposit?sub-depAmt:0;
+  const hasDep=isDeposit||(isBus&&depPct<100);
+  const depAmt=hasDep?Math.round(sub*depPct/100):0;
+  const depRem=hasDep?sub-depAmt:0;
 
   const rows=items.map((it,idx)=>{
     const raw=iRaw(it), disc=it.disc||0, after=iSum(it);
@@ -1165,10 +1212,10 @@ function buildHTML(target, sub, dep, rem) {
   </div>`:'';
 
   const badgeHtml=isDeposit?`<div class="inv-deposit-badge">📌 Hóa đơn đặt cọc ${depPct}%</div>`
-    :isBus?`<div class="inv-deposit-badge">🚌 Hóa đơn vé xe (đặt hộ)</div>`:'';
+    :isBus?`<div class="inv-deposit-badge">🚌 Hóa đơn vé xe (đặt hộ)${hasDep?' · cọc '+depPct+'%':''}</div>`:'';
 
   let totalHtml, depHtml='';
-  if (isDeposit) {
+  if (hasDep) {
     totalHtml=`<div class="inv-total-box">
       <div class="inv-tot-lbl">Cần cọc ${depPct}%</div>
       <div class="inv-tot-right">
@@ -1178,7 +1225,7 @@ function buildHTML(target, sub, dep, rem) {
     </div>
     <div class="inv-dep-after">
       <div class="inv-dep-row"><span>Tổng hóa đơn</span><span>${fmt(sub)} đ</span></div>
-      <div class="inv-dep-rem"><span>Còn lại</span><span>${fmt(depRem)} đ · thanh toán khi nhận phòng</span></div>
+      <div class="inv-dep-rem"><span>Còn lại</span><span>${fmt(depRem)} đ${isBus?'':' · thanh toán khi nhận phòng'}</span></div>
     </div>`;
   } else {
     totalHtml=`<div class="inv-total-box">
@@ -1216,13 +1263,13 @@ function buildHTML(target, sub, dep, rem) {
   let qrHtml='';
   if (qrChoice && qrChoice!=='none' && BANKS[qrChoice]) {
     const b=BANKS[qrChoice];
-    const payAmt=isDeposit?depAmt:(rem>0?rem:sub);
+    const payAmt=hasDep?depAmt:(rem>0?rem:sub);
     const info=(document.getElementById('f-qr-note').value.trim())||defaultQRNote();
     const qrUrl=`https://img.vietqr.io/image/${b.bin}-${b.acc}-compact2.png?amount=${payAmt}&addInfo=${encodeURIComponent(info)}&accountName=${encodeURIComponent(b.name)}`;
     qrHtml=`<div class="inv-qr">
       <img class="inv-qr-img" src="${qrUrl}" crossorigin="anonymous" alt="QR">
       <div class="inv-qr-info">
-        <div class="inv-qr-title">${isDeposit?'Quét QR để đặt cọc':isBus?'Quét QR để thanh toán vé xe':'Quét QR để chuyển khoản'}</div>
+        <div class="inv-qr-title">${isDeposit?'Quét QR để đặt cọc':isBus?(hasDep?'Quét QR để đặt cọc vé xe':'Quét QR để thanh toán vé xe'):'Quét QR để chuyển khoản'}</div>
         <div class="inv-qr-bank">VietinBank</div>
         <div class="inv-qr-acc-name">${b.name}</div>
         <div class="inv-qr-acc-no">${b.acc}</div>
@@ -1261,7 +1308,7 @@ function buildHTML(target, sub, dep, rem) {
 
 function syncTypeUI() {
   const t=document.getElementById('f-inv-type').value, isBus=t==='bus';
-  document.getElementById('f-pct-wrap').style.display=t==='deposit'?'block':'none';
+  document.getElementById('f-pct-wrap').style.display=(t==='deposit'||isBus)?'block':'none';
   document.getElementById('f-deposit-wrap').style.display=t==='full'?'block':'none';
   document.getElementById('f-phone-wrap').style.display=isBus?'block':'none';
   document.getElementById('f-room-row').style.display=isBus?'none':'';
@@ -1270,6 +1317,7 @@ function syncTypeUI() {
 function onTypeChange() {
   const t=document.getElementById('f-inv-type').value;
   syncTypeUI();
+  swapStarterItems(t==='bus');
   const depEl=document.getElementById('f-deposit');
   const hintEl=document.getElementById('dep-hint');
   if (t==='deposit') { depEl.value=''; if(hintEl) hintEl.style.display='none'; }
