@@ -275,6 +275,28 @@ input:focus, select:focus, textarea:focus {
 .inv-item-meta { font-size: 11px; color: #999; margin-top: 2px; display: block; }
 .inv-item-note { font-size: 11px; color: #aaa; font-style: italic; margin-top: 2px; display: block; }
 .inv-item-disc { font-size: 11px; color: var(--red); margin-top: 2px; display: block; }
+.inv-bus {
+  display: block; margin-top: 5px; padding: 6px 9px;
+  border-left: 2px solid var(--gold-light); background: #fcfbf9; border-radius: 4px;
+}
+.inv-bus-l { display: block; font-size: 10.5px; color: #777; line-height: 1.65; }
+.inv-bus-l b { color: var(--navy); font-weight: 600; }
+.bus-box {
+  margin-top: 7px; padding: 8px 9px; border-radius: 7px;
+  background: #fbf9f4; border: 1px dashed #e0d8cc;
+}
+.bus-box-head {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 700; color: var(--navy); margin-bottom: 6px;
+}
+.bus-copy { font-weight: 500; color: #999; cursor: pointer; text-decoration: underline; white-space: nowrap; }
+.bus-box input {
+  width: 100%; margin-bottom: 5px; padding: 7px 9px; font-size: 12px;
+  border: 1.5px solid #e8e2d6; border-radius: 6px; background: #fff;
+  font-family: 'DM Sans', sans-serif; color: var(--text);
+}
+.bus-box input:last-child { margin-bottom: 0; }
+.bus-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .inv-total-box {
   background: var(--navy); border-radius: 10px;
   padding: 14px 16px; margin-top: 16px;
@@ -393,13 +415,15 @@ input:focus, select:focus, textarea:focus {
     <div class="card-body">
       <div class="field"><label>Tên khách</label>
         <input type="text" id="f-guest" placeholder="Ví dụ: Nguyễn Văn A" oninput="render()"></div>
-      <div class="row2">
+      <div class="field" id="f-phone-wrap" style="display:none"><label>📞 Số điện thoại</label>
+        <input type="text" id="f-phone" placeholder="0912 345 678" oninput="render()"></div>
+      <div class="row2" id="f-room-row">
         <div class="field"><label>Phòng</label>
           <input type="text" id="f-room" placeholder="Phòng 103" oninput="render()"></div>
         <div class="field"><label>Số đêm</label>
           <input type="text" id="f-nights" readonly style="background:#f5f5f5;color:#aaa;font-size:13px"></div>
       </div>
-      <div class="row2">
+      <div class="row2" id="f-stay-row">
         <div class="field"><label>📅 Nhận phòng</label>
           <input type="date" id="f-checkin" oninput="calcNights();render()"></div>
         <div class="field"><label>📅 Trả phòng</label>
@@ -430,6 +454,7 @@ input:focus, select:focus, textarea:focus {
         <select id="f-inv-type" onchange="onTypeChange()" style="width:100%;padding:10px 12px;border:1.5px solid #e0d8cc;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--text);background:#fafaf8">
           <option value="full">Hóa đơn đầy đủ</option>
           <option value="deposit">Hóa đơn đặt cọc</option>
+          <option value="bus">Hóa đơn vé xe (đặt hộ)</option>
         </select></div>
       <div class="field" id="f-pct-wrap" style="display:none"><label>% Đặt cọc</label>
         <input type="number" id="f-dep-pct" value="50" min="1" max="100" inputmode="numeric" oninput="render()"></div>
@@ -690,11 +715,12 @@ function collectPayload(status='draft') {
     lang: 'vi',
     created_at: currentCreatedAt || new Date().toISOString(),
     guest:    document.getElementById('f-guest').value||'',
+    phone:    document.getElementById('f-phone').value||'',
     room:     document.getElementById('f-room').value||'',
     checkin:  document.getElementById('f-checkin').value||'',
     checkout: document.getElementById('f-checkout').value||'',
     nights:   parseInt(document.getElementById('f-nights').value)||0,
-    items:    items.map(it=>({n:it.n,q:it.q,u:it.u,p:it.p,disc:it.disc,note:it.note})),
+    items:    items.map(it=>({n:it.n,q:it.q,u:it.u,p:it.p,disc:it.disc,note:it.note,bus:it.bus||null})),
     deposit:  dep,
     note:     document.getElementById('f-note').value||'',
     qr_account: document.getElementById('f-qr').value||'none',
@@ -713,6 +739,7 @@ function applyPayload(p) {
   currentInvoiceId = S(p.id) || newInvoiceId();
   currentCreatedAt = S(p.created_at) || new Date().toISOString();
   document.getElementById('f-guest').value    = S(p.guest);
+  document.getElementById('f-phone').value    = S(p.phone);
   document.getElementById('f-room').value     = S(p.room);
   document.getElementById('f-checkin').value  = S(p.checkin);
   document.getElementById('f-checkout').value = S(p.checkout);
@@ -725,11 +752,10 @@ function applyPayload(p) {
     ? Math.round((p.subtotal||0)*(p.deposit_pct||0)/100) : 0;
   if (p.rate) document.getElementById('f-rate').value = p.rate;
   items=[]; idc=0;
-  (p.items||[]).forEach(it=>items.push({id:++idc, n:S(it.n), q:it.q??1, u:S(it.u), p:it.p||0, disc:it.disc||0, note:S(it.note)}));
+  (p.items||[]).forEach(it=>items.push({id:++idc, n:S(it.n), q:it.q??1, u:S(it.u), p:it.p||0, disc:it.disc||0, note:S(it.note), bus:it.bus||null}));
   if (items.length===0) items.push({id:++idc, n:'Phòng (OTA)', q:1, u:'phòng', p:0, disc:0, note:''});
   calcNights();
-  document.getElementById('f-pct-wrap').style.display=document.getElementById('f-inv-type').value==='deposit'?'block':'none';
-  document.getElementById('f-deposit-wrap').style.display=document.getElementById('f-inv-type').value==='deposit'?'none':'block';
+  syncTypeUI();
   const qn=S(p.qr_note).trim();
   qrNoteDirty = qn!=='';
   document.getElementById('f-qr-note').value = qn;
@@ -850,14 +876,13 @@ function clearCurrentDraft() {
   currentInvoiceId = newInvoiceId();
   currentCreatedAt = new Date().toISOString();
   items=[]; idc=0;
-  ['f-guest','f-room','f-checkin','f-checkout','f-nights','f-deposit','f-note'].forEach(id=>document.getElementById(id).value='');
+  ['f-guest','f-phone','f-room','f-checkin','f-checkout','f-nights','f-deposit','f-note'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-qr').value='none';
   qrNoteDirty=false; document.getElementById('f-qr-note').value='';
   document.getElementById('f-qr-note-wrap').style.display='none';
   document.getElementById('f-inv-type').value='full';
   document.getElementById('f-dep-pct').value='50';
-  document.getElementById('f-pct-wrap').style.display='none';
-  document.getElementById('f-deposit-wrap').style.display='block';
+  syncTypeUI();
   loadedDepositPaid=0;
   const h=document.getElementById('dep-hint'); if(h) h.style.display='none';
   items.push({id:++idc, n:'Phòng (OTA)', q:1, u:'phòng', p:0, disc:0, note:''});
@@ -909,7 +934,7 @@ function init() {
     drawForms(); render();
   }
   window.addEventListener('resize', () => { if(curTab==='preview') scalePreview(); });
-  ['f-guest','f-room','f-checkin','f-checkout','f-deposit','f-note','f-qr','f-qr-note','f-rate','f-dep-pct','f-inv-type'].forEach(id=>{
+  ['f-guest','f-phone','f-room','f-checkin','f-checkout','f-deposit','f-note','f-qr','f-qr-note','f-rate','f-dep-pct','f-inv-type'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.addEventListener('input', ()=>scheduleSync());
   });
 }
@@ -943,6 +968,45 @@ function updCalcOnly(id,f,v) {
   if(el) el.textContent=fmtD(iSum(it));
   render();
 }
+function busFormHTML(it, idx) {
+  if (document.getElementById('f-inv-type').value!=='bus') return '';
+  const b=it.bus||{};
+  return `<div class="bus-box">
+    <div class="bus-box-head"><span>🚌 Thông tin chuyến</span>${idx>0?`<span class="bus-copy" onclick="copyBusFromPrev(${it.id})">📋 Chép từ mục trên</span>`:''}</div>
+    <input type="text" value="${esc(b.co)}" placeholder="🚌 Nhà xe" oninput="updBus(${it.id},'co',this.value)">
+    <div class="bus-row2">
+      <input type="date" value="${esc(b.date)}" oninput="updBus(${it.id},'date',this.value)">
+      <input type="time" value="${esc(b.time)}" oninput="updBus(${it.id},'time',this.value)">
+    </div>
+    <input type="text" value="${esc(b.from)}" placeholder="📍 Điểm đón" oninput="updBus(${it.id},'from',this.value)">
+    <input type="text" value="${esc(b.to)}" placeholder="📍 Điểm trả" oninput="updBus(${it.id},'to',this.value)">
+    <input type="text" value="${esc(b.tk)}" placeholder="🎫 Loại vé" oninput="updBus(${it.id},'tk',this.value)">
+  </div>`;
+}
+function updBus(id,f,v) {
+  const it=items.find(i=>i.id===id);
+  if(!it.bus) it.bus={};
+  it.bus[f]=v;
+  render();
+}
+function copyBusFromPrev(id) {
+  const i=items.findIndex(x=>x.id===id);
+  if(i<1) return;
+  items[i].bus=Object.assign({}, items[i-1].bus||{});
+  drawForms(); render();
+}
+function busInvHTML(it) {
+  const b=it.bus||{};
+  const L=[];
+  if(b.co) L.push(`🚌 Nhà xe: <b>${esc(b.co)}</b>`);
+  const dt=[b.date?`📅 ${fmtDate(b.date)}`:'', b.time?`⏰ ${esc(b.time)}`:''].filter(Boolean).join(' · ');
+  if(dt) L.push(dt);
+  if(b.from) L.push(`📍 Đón: ${esc(b.from)}`);
+  if(b.to) L.push(`📍 Trả: ${esc(b.to)}`);
+  if(b.tk) L.push(`🎫 ${esc(b.tk)}`);
+  return L.length?`<span class="inv-bus">${L.map(x=>`<span class="inv-bus-l">${x}</span>`).join('')}</span>`:'';
+}
+
 function upd(id,f,v) {
   const it=items.find(i=>i.id===id);
   if (f==='p'||f==='q') {
@@ -980,6 +1044,7 @@ function drawForms() {
         </div>
         <textarea rows="1" placeholder="Ghi chú..." style="resize:none;font-size:12px;margin-top:5px;color:#666"
           oninput="upd(${it.id},'note',this.value)">${esc(it.note)}</textarea>
+        ${busFormHTML(it, idx)}
         <div class="disc-row">
           <label>Giảm giá</label>
           <div class="disc-input-wrap">
@@ -1022,8 +1087,9 @@ let qrNoteDirty = false;
 function defaultQRNote() {
   const g=document.getElementById('f-guest').value.trim();
   const r=document.getElementById('f-room').value.trim();
-  const prefix=document.getElementById('f-inv-type').value==='deposit'?'COC ':'';
-  return `${prefix}${g}${r?' '+r:''}`.trim() || 'Thanh toan';
+  const t=document.getElementById('f-inv-type').value;
+  const prefix=t==='deposit'?'COC ':t==='bus'?'VE XE ':'';
+  return `${prefix}${g}${r&&t!=='bus'?' '+r:''}`.trim() || 'Thanh toan';
 }
 function syncQRNote() {
   const el=document.getElementById('f-qr-note'); if(!el) return;
@@ -1066,6 +1132,8 @@ function buildHTML(target, sub, dep, rem) {
   const invType=document.getElementById('f-inv-type').value;
   const depPct=Math.min(100,Math.max(1,parseFloat(document.getElementById('f-dep-pct').value)||50));
   const isDeposit=invType==='deposit';
+  const isBus=invType==='bus';
+  const phone=document.getElementById('f-phone').value;
   const depAmt=isDeposit?Math.round(sub*depPct/100):0;
   const depRem=isDeposit?sub-depAmt:0;
 
@@ -1075,25 +1143,29 @@ function buildHTML(target, sub, dep, rem) {
     const hasMeta = it.n && (it.p>0 || (it.q??1)!==1);
     const meta=hasMeta?`${qtyStr}${it.p>0?' × '+fmt(it.p)+' đ':''}`:null;
     const noteLine=it.note?`<span class="inv-item-note">${it.note}</span>`:'';
+    const busLine=isBus?busInvHTML(it):'';
     const discLine=disc>0?`<span class="inv-item-disc">Giảm ${disc}% · −${fmt(raw*disc/100)} đ</span>`:'';
     const total=disc>0?fmt(after):raw>0?fmt(raw):'—';
     return `<tr>
     <td>
       <span class="inv-item-name">${it.n||'—'}</span>
       ${meta?`<span class="inv-item-meta">${meta}</span>`:''}
-      ${noteLine}${discLine}
+      ${busLine}${noteLine}${discLine}
     </td>
     <td>${total}${total!='—'?' đ':''}</td>
   </tr>`;
   }).join('');
 
-  const metaHtml=(ci||co||room)?`<div class="inv-meta">
+  const metaHtml=isBus
+    ? (phone?`<div class="inv-meta"><span>📞 <strong>${esc(phone)}</strong></span></div>`:'')
+    : (ci||co||room)?`<div class="inv-meta">
     ${room?`<span>🛏 <strong>${room}</strong></span>`:''}
     ${ci?`<span>📅 Nhận phòng: <strong>${fmtDate(ci)}</strong></span>`:''}
     ${co?`<span>📅 Trả phòng: <strong>${fmtDate(co)}</strong></span>`:''}
   </div>`:'';
 
-  const badgeHtml=isDeposit?`<div class="inv-deposit-badge">📌 Hóa đơn đặt cọc ${depPct}%</div>`:'';
+  const badgeHtml=isDeposit?`<div class="inv-deposit-badge">📌 Hóa đơn đặt cọc ${depPct}%</div>`
+    :isBus?`<div class="inv-deposit-badge">🚌 Hóa đơn vé xe (đặt hộ)</div>`:'';
 
   let totalHtml, depHtml='';
   if (isDeposit) {
@@ -1150,7 +1222,7 @@ function buildHTML(target, sub, dep, rem) {
     qrHtml=`<div class="inv-qr">
       <img class="inv-qr-img" src="${qrUrl}" crossorigin="anonymous" alt="QR">
       <div class="inv-qr-info">
-        <div class="inv-qr-title">${isDeposit?'Quét QR để đặt cọc':'Quét QR để chuyển khoản'}</div>
+        <div class="inv-qr-title">${isDeposit?'Quét QR để đặt cọc':isBus?'Quét QR để thanh toán vé xe':'Quét QR để chuyển khoản'}</div>
         <div class="inv-qr-bank">VietinBank</div>
         <div class="inv-qr-acc-name">${b.name}</div>
         <div class="inv-qr-acc-no">${b.acc}</div>
@@ -1187,10 +1259,17 @@ function buildHTML(target, sub, dep, rem) {
   </div>`;
 }
 
+function syncTypeUI() {
+  const t=document.getElementById('f-inv-type').value, isBus=t==='bus';
+  document.getElementById('f-pct-wrap').style.display=t==='deposit'?'block':'none';
+  document.getElementById('f-deposit-wrap').style.display=t==='full'?'block':'none';
+  document.getElementById('f-phone-wrap').style.display=isBus?'block':'none';
+  document.getElementById('f-room-row').style.display=isBus?'none':'';
+  document.getElementById('f-stay-row').style.display=isBus?'none':'';
+}
 function onTypeChange() {
   const t=document.getElementById('f-inv-type').value;
-  document.getElementById('f-pct-wrap').style.display=t==='deposit'?'block':'none';
-  document.getElementById('f-deposit-wrap').style.display=t==='deposit'?'none':'block';
+  syncTypeUI();
   const depEl=document.getElementById('f-deposit');
   const hintEl=document.getElementById('dep-hint');
   if (t==='deposit') { depEl.value=''; if(hintEl) hintEl.style.display='none'; }
@@ -1198,6 +1277,7 @@ function onTypeChange() {
     depEl.value=loadedDepositPaid;
     if(hintEl) hintEl.style.display='block';
   }
+  drawForms();
   render();
 }
 
@@ -1234,7 +1314,7 @@ async function downloadImage() {
     await waitImages(src);
     const canvas=await html2canvas(src,{scale:3,useCORS:true,backgroundColor:'#fff',logging:false,width:480,windowWidth:480});
     const a=document.createElement('a');
-    const prefix=document.getElementById('f-inv-type').value==='deposit'?'hoadon-coc':'hoadon';
+    const prefix=(x=>x==='deposit'?'hoadon-coc':x==='bus'?'hoadon-vexe':'hoadon')(document.getElementById('f-inv-type').value);
     a.download=`${prefix}-${(document.getElementById('f-guest').value||'khach').replace(/\s+/g,'-')}.png`;
     a.href=canvas.toDataURL('image/png'); a.click();
     syncNow('final');
@@ -1249,7 +1329,7 @@ async function shareImage() {
     await waitImages(src);
     const canvas=await html2canvas(src,{scale:3,useCORS:true,backgroundColor:'#fff',logging:false,width:480,windowWidth:480});
     canvas.toBlob(async(blob)=>{
-      const prefix=document.getElementById('f-inv-type').value==='deposit'?'hoadon-coc':'hoadon';
+      const prefix=(x=>x==='deposit'?'hoadon-coc':x==='bus'?'hoadon-vexe':'hoadon')(document.getElementById('f-inv-type').value);
       const name=`${prefix}-${(document.getElementById('f-guest').value||'khach').replace(/\s+/g,'-')}.png`;
       const file=new File([blob],name,{type:'image/png'});
       if(navigator.share&&navigator.canShare({files:[file]})){
@@ -1273,15 +1353,14 @@ function resetForm(){
   currentInvoiceId = newInvoiceId();
   currentCreatedAt = new Date().toISOString();
   items=[];idc=0;
-  ['f-guest','f-room','f-checkin','f-checkout','f-nights','f-deposit','f-note']
+  ['f-guest','f-phone','f-room','f-checkin','f-checkout','f-nights','f-deposit','f-note']
     .forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-qr').value='none';
   qrNoteDirty=false; document.getElementById('f-qr-note').value='';
   document.getElementById('f-qr-note-wrap').style.display='none';
   document.getElementById('f-inv-type').value='full';
   document.getElementById('f-dep-pct').value='50';
-  document.getElementById('f-pct-wrap').style.display='none';
-  document.getElementById('f-deposit-wrap').style.display='block';
+  syncTypeUI();
   loadedDepositPaid=0;
   const h=document.getElementById('dep-hint'); if(h) h.style.display='none';
   items.push({id:++idc, n:'Phòng (OTA)', q:1, u:'phòng', p:0, disc:0, note:''});

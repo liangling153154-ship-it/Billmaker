@@ -26,7 +26,7 @@ const HEADERS = [
   'id','status','lang','created_at','updated_at',
   'guest','room','checkin','checkout','nights',
   'items_json','deposit','note','qr_account','rate',
-  'subtotal','balance','invoice_type','deposit_pct','qr_note'
+  'subtotal','balance','invoice_type','deposit_pct','qr_note','phone'
 ];
 const SHEET_NAME = 'Invoices';
 
@@ -124,6 +124,7 @@ function saveInvoice(p) {
     p.invoice_type || 'full',
     p.deposit_pct || 0,
     p.qr_note || '',
+    p.phone || '',
   ];
   const r = findRow(sh, id);
   if (r > 0) {
