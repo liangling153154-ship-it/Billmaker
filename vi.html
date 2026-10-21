@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Sen's Hóa Đơn</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas-pro@1.6.7/dist/html2canvas-pro.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap');
 
@@ -1168,6 +1169,43 @@ function render() {
   scheduleSync();
 }
 
+// ── VIETQR (NAPAS/EMVCo payload, built locally) ──
+function vqrTLV(id,v){ return id+String(v.length).padStart(2,'0')+v; }
+function vqrCRC(s){
+  let c=0xFFFF;
+  for(let i=0;i<s.length;i++){
+    c^=s.charCodeAt(i)<<8;
+    for(let j=0;j<8;j++) c=(c&0x8000)?((c<<1)^0x1021)&0xFFFF:(c<<1)&0xFFFF;
+  }
+  return c.toString(16).toUpperCase().padStart(4,'0');
+}
+// same cleanup img.vietqr.io applied: no diacritics, letters/digits/spaces only, max 40 chars
+function vqrNote(s){
+  return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/đ/g,'d').replace(/Đ/g,'D').replace(/[^A-Za-z0-9 ]/g,'')
+    .replace(/\s+/g,' ').trim().slice(0,40).trim();
+}
+function vietqrPayload(bin,acc,amount,info){
+  const amt=Math.round(amount)>0?String(Math.round(amount)):'';
+  const note=vqrNote(info);
+  let s=vqrTLV('00','01')+vqrTLV('01',amt?'12':'11')
+    +vqrTLV('38',vqrTLV('00','A000000727')+vqrTLV('01',vqrTLV('00',bin)+vqrTLV('01',acc))+vqrTLV('02','QRIBFTTA'))
+    +vqrTLV('53','704')+(amt?vqrTLV('54',amt):'')+vqrTLV('58','VN')
+    +(note?vqrTLV('62',vqrTLV('08',note)):'')+'6304';
+  return s+vqrCRC(s);
+}
+const vqrCache={};
+function vietqrDataURL(payload){
+  if(vqrCache[payload]) return vqrCache[payload];
+  const qr=qrcode(0,'M'); qr.addData(payload); qr.make();
+  const n=qr.getModuleCount(), cell=8, pad=2, size=(n+pad*2)*cell;
+  const c=document.createElement('canvas'); c.width=c.height=size;
+  const g=c.getContext('2d');
+  g.fillStyle='#fff'; g.fillRect(0,0,size,size); g.fillStyle='#111';
+  for(let r=0;r<n;r++) for(let k=0;k<n;k++) if(qr.isDark(r,k)) g.fillRect((k+pad)*cell,(r+pad)*cell,cell,cell);
+  return vqrCache[payload]=c.toDataURL('image/png');
+}
+
 // ── BUILD INVOICE HTML ──
 function buildHTML(target, sub, dep, rem) {
   const guest=document.getElementById('f-guest').value||'—';
@@ -1265,16 +1303,17 @@ function buildHTML(target, sub, dep, rem) {
     const b=BANKS[qrChoice];
     const payAmt=hasDep?depAmt:(rem>0?rem:sub);
     const info=(document.getElementById('f-qr-note').value.trim())||defaultQRNote();
-    const qrUrl=`https://img.vietqr.io/image/${b.bin}-${b.acc}-compact2.png?amount=${payAmt}&addInfo=${encodeURIComponent(info)}&accountName=${encodeURIComponent(b.name)}`;
+    // QR drawn locally: img.vietqr.io now serves an SVG that html2canvas cannot rasterize
+    const qrSrc=vietqrDataURL(vietqrPayload(b.bin,b.acc,payAmt,info));
     qrHtml=`<div class="inv-qr">
-      <img class="inv-qr-img" src="${qrUrl}" crossorigin="anonymous" alt="QR">
+      <img class="inv-qr-img" src="${qrSrc}" alt="QR">
       <div class="inv-qr-info">
         <div class="inv-qr-title">${isDeposit?'Quét QR để đặt cọc':isBus?(hasDep?'Quét QR để đặt cọc vé xe':'Quét QR để thanh toán vé xe'):'Quét QR để chuyển khoản'}</div>
         <div class="inv-qr-bank">VietinBank</div>
         <div class="inv-qr-acc-name">${b.name}</div>
         <div class="inv-qr-acc-no">${b.acc}</div>
         <div class="inv-qr-amt">Số tiền: <strong>${fmt(payAmt)} đ</strong></div>
-        <div class="inv-qr-amt">ND: ${esc(info)}</div>
+        <div class="inv-qr-amt">ND: ${esc(vqrNote(info))}</div>
       </div>
     </div>`;
   }
