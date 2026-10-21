@@ -473,6 +473,7 @@ input:focus, select:focus, textarea:focus {
           <option value="none">Không hiện QR</option>
           <option value="personal">Tài khoản Cá nhân (Tô Thị Phương Linh)</option>
           <option value="homestay">Tài khoản Homestay (HKD Sen Homestay)</option>
+          <option value="hung">Tài khoản Tô Văn Hùng (Agribank)</option>
         </select></div>
       <div class="field" id="f-qr-note-wrap" style="display:none"><label>Nội dung chuyển khoản</label>
         <input type="text" id="f-qr-note" maxlength="70" oninput="onQRNoteInput()">
@@ -736,7 +737,7 @@ function collectPayload(status='draft') {
     subtotal: sub,
     balance:  sub-dep,
     invoice_type: invType,
-    deposit_pct: (invType==='deposit'||invType==='bus')?depPct:0,
+    deposit_pct: invType==='deposit'?depPct:0,
   };
 }
 
@@ -1134,9 +1135,13 @@ function defaultQRNote() {
   const g=document.getElementById('f-guest').value.trim();
   const r=document.getElementById('f-room').value.trim();
   const t=document.getElementById('f-inv-type').value;
-  const busPct=parseFloat(document.getElementById('f-dep-pct').value)||50;
-  const prefix=t==='deposit'?'COC ':t==='bus'?(busPct<100?'COC VE XE ':'VE XE '):'';
-  return `${prefix}${g}${r&&t!=='bus'?' '+r:''}`.trim() || 'Thanh toan';
+  const prefix=t==='deposit'?'COC ':t==='bus'?'VE XE ':'';
+  const ci=document.getElementById('f-checkin').value;
+  const day=t==='deposit'&&ci?ci.split('-').reverse().join(' '):'';   // "20 10 2026": bank notes drop "/"
+  const tail=[t!=='bus'?r:'', day].filter(Boolean).join(' ');
+  // notes cap at 40 chars: shorten the name, never the room or date
+  const room=40-prefix.length-(tail?tail.length+1:0);
+  return `${prefix}${g.slice(0,Math.max(room,0)).trim()}${tail?' '+tail:''}`.replace(/s+/g,' ').trim() || 'Thanh toan';
 }
 function syncQRNote() {
   const el=document.getElementById('f-qr-note'); if(!el) return;
@@ -1218,9 +1223,8 @@ function buildHTML(target, sub, dep, rem) {
   const isDeposit=invType==='deposit';
   const isBus=invType==='bus';
   const phone=document.getElementById('f-phone').value;
-  const hasDep=isDeposit||(isBus&&depPct<100);
-  const depAmt=hasDep?Math.round(sub*depPct/100):0;
-  const depRem=hasDep?sub-depAmt:0;
+  const depAmt=isDeposit?Math.round(sub*depPct/100):0;
+  const depRem=isDeposit?sub-depAmt:0;
 
   const rows=items.map((it,idx)=>{
     const raw=iRaw(it), disc=it.disc||0, after=iSum(it);
@@ -1250,10 +1254,10 @@ function buildHTML(target, sub, dep, rem) {
   </div>`:'';
 
   const badgeHtml=isDeposit?`<div class="inv-deposit-badge">📌 Hóa đơn đặt cọc ${depPct}%</div>`
-    :isBus?`<div class="inv-deposit-badge">🚌 Hóa đơn vé xe (đặt hộ)${hasDep?' · cọc '+depPct+'%':''}</div>`:'';
+    :isBus?`<div class="inv-deposit-badge">🚌 Hóa đơn vé xe (đặt hộ)</div>`:'';
 
   let totalHtml, depHtml='';
-  if (hasDep) {
+  if (isDeposit) {
     totalHtml=`<div class="inv-total-box">
       <div class="inv-tot-lbl">Cần cọc ${depPct}%</div>
       <div class="inv-tot-right">
@@ -1263,7 +1267,7 @@ function buildHTML(target, sub, dep, rem) {
     </div>
     <div class="inv-dep-after">
       <div class="inv-dep-row"><span>Tổng hóa đơn</span><span>${fmt(sub)} đ</span></div>
-      <div class="inv-dep-rem"><span>Còn lại</span><span>${fmt(depRem)} đ${isBus?'':' · thanh toán khi nhận phòng'}</span></div>
+      <div class="inv-dep-rem"><span>Còn lại</span><span>${fmt(depRem)} đ · thanh toán khi nhận phòng</span></div>
     </div>`;
   } else {
     totalHtml=`<div class="inv-total-box">
@@ -1295,21 +1299,22 @@ function buildHTML(target, sub, dep, rem) {
 
   const qrChoice=document.getElementById('f-qr').value;
   const BANKS={
-    personal: {bin:'970415', acc:'14862868', name:'TO THI PHUONG LINH', label:'Tài khoản Cá nhân'},
-    homestay: {bin:'970415', acc:'102885812778', name:'HDK SEN HOMESTAY', label:'Tài khoản Homestay'},
+    personal: {bin:'970415', acc:'14862868', name:'TO THI PHUONG LINH', bank:'VietinBank', label:'Tài khoản Cá nhân'},
+    homestay: {bin:'970415', acc:'102885812778', name:'HDK SEN HOMESTAY', bank:'VietinBank', label:'Tài khoản Homestay'},
+    hung:     {bin:'970405', acc:'8314205207895', name:'TO VAN HUNG', bank:'Agribank', label:'Tài khoản Tô Văn Hùng'},
   };
   let qrHtml='';
   if (qrChoice && qrChoice!=='none' && BANKS[qrChoice]) {
     const b=BANKS[qrChoice];
-    const payAmt=hasDep?depAmt:(rem>0?rem:sub);
+    const payAmt=isDeposit?depAmt:(rem>0?rem:sub);
     const info=(document.getElementById('f-qr-note').value.trim())||defaultQRNote();
     // QR drawn locally: img.vietqr.io now serves an SVG that html2canvas cannot rasterize
     const qrSrc=vietqrDataURL(vietqrPayload(b.bin,b.acc,payAmt,info));
     qrHtml=`<div class="inv-qr">
       <img class="inv-qr-img" src="${qrSrc}" alt="QR">
       <div class="inv-qr-info">
-        <div class="inv-qr-title">${isDeposit?'Quét QR để đặt cọc':isBus?(hasDep?'Quét QR để đặt cọc vé xe':'Quét QR để thanh toán vé xe'):'Quét QR để chuyển khoản'}</div>
-        <div class="inv-qr-bank">VietinBank</div>
+        <div class="inv-qr-title">${isDeposit?'Quét QR để đặt cọc':isBus?'Quét QR để thanh toán vé xe':'Quét QR để chuyển khoản'}</div>
+        <div class="inv-qr-bank">${b.bank}</div>
         <div class="inv-qr-acc-name">${b.name}</div>
         <div class="inv-qr-acc-no">${b.acc}</div>
         <div class="inv-qr-amt">Số tiền: <strong>${fmt(payAmt)} đ</strong></div>
@@ -1347,7 +1352,7 @@ function buildHTML(target, sub, dep, rem) {
 
 function syncTypeUI() {
   const t=document.getElementById('f-inv-type').value, isBus=t==='bus';
-  document.getElementById('f-pct-wrap').style.display=(t==='deposit'||isBus)?'block':'none';
+  document.getElementById('f-pct-wrap').style.display=t==='deposit'?'block':'none';
   document.getElementById('f-deposit-wrap').style.display=t==='full'?'block':'none';
   document.getElementById('f-phone-wrap').style.display=isBus?'block':'none';
   document.getElementById('f-room-row').style.display=isBus?'none':'';
