@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sen's Combo Tour</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Lora:ital,wght@0,600;0,700;1,500&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/html2canvas-pro@1.6.7/dist/html2canvas-pro.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<style>
+/* Combo tour module (design: Linh's sketch). Phones: form, then invoice. From 900px: side by side.
+   The invoice keeps a fixed light palette so the exported image never follows dark mode. */
+:root{
+  --bg:#f6efe8; --paper:#fffdfa; --ink:#2b1d14; --muted:#7a6656; --line:#e6d6c6;
+  --accent:#b8612a; --accent-ink:#fff; --soft:#f3e2d3; --field:#fff; --bad:#b3261e;
+  --display:"Lora",Georgia,serif; --body:"Be Vietnam Pro",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1c1511; --paper:#271d17; --ink:#f2e6db; --muted:#b39c89; --line:#3e3027;
+  --accent:#e08a4f; --accent-ink:#1c1511; --soft:#3a2a20; --field:#211913; --bad:#ff8a80; color-scheme:dark}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;
+  padding:10px max(16px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left));
+  padding-top:max(10px,env(safe-area-inset-top));background:var(--accent);color:var(--accent-ink)}
+.top h1{flex:1;margin:0;font-family:var(--display);font-size:1.15rem;line-height:1.2}
+.top a,.top button{color:inherit;text-decoration:none;font:600 13px var(--body);background:transparent;
+  border:1px solid currentColor;border-radius:8px;padding:6px 10px;cursor:pointer;white-space:nowrap}
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr);gap:20px;
+  padding:16px max(16px,env(safe-area-inset-right)) calc(96px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+@media (min-width:900px){.wrap{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
+  .preview{position:sticky;top:72px}}
+.codebar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--paper);border:1px solid var(--line);
+  border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:.88rem}
+.codebar b{font-family:var(--display);font-size:1.05rem;letter-spacing:.03em}
+.codebar .err{color:var(--bad);flex-basis:100%}
+.codebar button{margin-left:auto}
+form{display:flex;flex-direction:column;gap:14px}
+fieldset{border:1px solid var(--line);border-radius:10px;padding:14px;margin:0;background:var(--paper);display:grid;gap:10px;min-width:0}
+legend{font-weight:700;padding:0 6px;display:flex;gap:8px;align-items:center}
+legend .n{background:var(--accent);color:var(--accent-ink);border-radius:50%;width:22px;height:22px;
+  display:inline-grid;place-items:center;font-size:.8rem}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{display:flex;flex-direction:column;gap:4px;font-size:.82rem;color:var(--muted);font-weight:500;min-width:0}
+input,select,textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--field);border:1px solid var(--line);
+  border-radius:7px;padding:9px 10px;min-width:0;width:100%}
+textarea{resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{font:500 .85rem var(--body);color:var(--ink);background:var(--field);border:1px solid var(--line);
+  border-radius:999px;padding:6px 12px;cursor:pointer}
+.chips button.on{background:var(--soft);border-color:var(--accent);font-weight:600}
+.toggle{flex-direction:row;align-items:center;gap:8px;color:var(--ink);font-size:.9rem}
+.toggle input{width:20px;height:20px;accent-color:var(--accent);margin:0}
+fieldset.off .opt{display:none}
+.hint{font-size:.78rem;color:var(--muted);margin:0}
+.link{font:600 .8rem var(--body);color:var(--accent);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline}
+.btn{font:600 15px var(--body);border-radius:9px;padding:11px 14px;cursor:pointer;border:1px solid var(--accent)}
+.primary{background:var(--accent);color:var(--accent-ink)}
+.ghost{background:var(--paper);color:var(--accent)}
+button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;gap:8px;background:var(--paper);border-top:1px solid var(--line);
+  padding:10px max(16px,env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+.bar .btn{flex:1}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:7;
+  background:var(--ink);color:var(--paper);border-radius:999px;padding:8px 16px;font-size:.88rem;opacity:0;pointer-events:none;
+  transition:opacity .2s;max-width:calc(100vw - 32px);text-align:center}
+.toast.show{opacity:1}
+.hist{margin-top:6px}
+.hist h2{font-family:var(--display);font-size:1.05rem;margin:0 0 8px}
+.hist-row{display:grid;grid-template-columns:1fr auto;gap:2px 10px;width:100%;text-align:left;background:var(--paper);
+  border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin-bottom:8px;cursor:pointer;font:inherit;color:inherit}
+.hist-row b{font-family:var(--display)} .hist-row span{font-size:.82rem;color:var(--muted)}
+.hist-row .r{text-align:right}
+/* ── invoice (what the guest receives) ── */
+.inv{--i-ink:#2b1d14;--i-muted:#7a6656;--i-line:#e6d6c6;--i-accent:#b8612a;--i-soft:#f3e2d3;
+  background:#fffdfa;color:var(--i-ink);border:1px solid var(--i-line);border-radius:12px;overflow:hidden;
+  font-family:var(--body);font-size:15px;line-height:1.5}
+.inv-head{background:var(--i-accent);color:#fff;padding:16px 18px;display:flex;justify-content:space-between;gap:12px}
+.inv .brand{font-family:var(--display);font-size:1.45rem;font-weight:700;line-height:1.1}
+.inv .brand small{display:block;font-family:var(--body);font-size:.74rem;font-weight:500;opacity:.92;margin-top:4px}
+.inv .meta{text-align:right;font-size:.78rem;white-space:nowrap}
+.inv .meta b{display:block;font-size:.95rem;letter-spacing:.05em}
+.inv-body{padding:16px 18px;display:grid;gap:12px}
+.inv .title{font-family:var(--display);font-style:italic;font-size:1.12rem;margin:0}
+.inv .cust{display:grid;grid-template-columns:1fr 1fr;gap:3px 16px;font-size:.86rem;border-bottom:1px dashed var(--i-line);padding-bottom:12px}
+.inv .cust span,.inv .pay span{color:var(--i-muted)}
+.inv ol{list-style:none;margin:0;padding:0}
+.inv li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:8px;padding:9px 0;border-bottom:1px solid var(--i-line)}
+.inv li .i{color:var(--i-accent);font-weight:700}
+.inv li h4{margin:0 0 2px;font-size:.93rem}
+.inv li p{margin:0;font-size:.84rem;color:var(--i-muted)}
+.inv .total{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--i-soft);border-radius:8px;padding:12px 14px}
+.inv .total .lbl{font-weight:600;font-size:.92rem}
+.inv .total .amt{font-family:var(--display);font-size:1.5rem;font-weight:700;color:var(--i-accent);white-space:nowrap}
+.inv .pay{display:grid;grid-template-columns:1fr 1fr;gap:3px 16px;font-size:.88rem}
+.inv .qr{display:flex;gap:14px;align-items:center;border:1px solid var(--i-line);border-radius:10px;padding:12px;
+  background:linear-gradient(135deg,#fffdfa 0%,var(--i-soft) 100%)}
+.inv .qr img{width:118px;height:118px;flex:none;background:#fff;border-radius:6px;padding:4px}
+.inv .qr div{min-width:0;font-size:.82rem;line-height:1.55}
+.inv .qr .t{font-size:.7rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--i-accent)}
+.inv .qr .bk{font-weight:700;font-size:.92rem}
+.inv .qr .acc{font-family:var(--display);font-size:1.05rem;font-weight:700;color:var(--i-accent);letter-spacing:.02em}
+.inv .qr .amt{font-weight:700;color:var(--i-accent)}
+.inv .note{font-size:.8rem;color:var(--i-muted);white-space:pre-wrap;margin:0}
+.inv .foot{font-size:.78rem;color:var(--i-muted);text-align:center;border-top:1px dashed var(--i-line);padding-top:10px}
+#exp{position:fixed;left:-10000px;top:0;width:480px}
+#exp .inv{border:0;border-radius:0}
+</style>
+</head>
+<body>
+<header class="top">
+  <a href="vi.html">← Hóa đơn</a>
+  <h1>Combo tour</h1>
+  <button type="button" id="newBill">＋ Mới</button>
+</header>
+<main class="wrap">
+<section>
+  <div class="codebar" id="codebar"></div>
+  <form id="f" autocomplete="off" onsubmit="return false">
+    <fieldset>
+      <legend>Gói combo</legend>
+      <div class="chips" id="pkgChips"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Thông tin khách</legend>
+      <label>Họ tên<input data-k="guest" placeholder="Nguyễn Thu Hà"></label>
+      <div class="row2">
+        <label>Số điện thoại<input data-k="phone" inputmode="tel" placeholder="0912 345 678"></label>
+        <label>Số khách<input data-k="pax" type="number" min="1" inputmode="numeric"></label>
+      </div>
+      <label>Ngày khởi hành <input data-k="start" type="date"></label>
+      <p class="hint">Đổi ngày khởi hành là các ngày bên dưới tự tính lại (xe đêm, tới nơi sáng hôm sau).</p>
+    </fieldset>
+
+    <fieldset>
+      <legend><span class="n">1</span>Vé xe Hà Nội → Cao Bằng</legend>
+      <div class="row2"><label>Giờ xe<input data-k="x1.time" type="time"></label>
+        <label>Loại giường<select data-k="x1.tk" data-list="TICKETS"></select></label></div>
+      <label>Điểm đón<input data-k="x1.from"></label><div class="chips" data-pick="x1.from" data-list="STOPS"></div>
+      <label>Điểm trả<input data-k="x1.to"></label><div class="chips" data-pick="x1.to" data-list="STOPS"></div>
+    </fieldset>
+
+    <fieldset data-opt="early">
+      <legend><span class="n">2</span>Chỗ nghỉ khi tới sớm</legend>
+      <label class="toggle"><input type="checkbox" data-k="early.on">Có hỗ trợ</label>
+      <label class="opt">Ngày<input data-k="early.date" type="date"></label>
+    </fieldset>
+
+    <div id="stays" style="display:contents"></div>
+
+    <fieldset>
+      <legend><span class="n">5</span>Xe máy di chuyển</legend>
+      <div class="row2"><label>Loại xe<select data-k="bike.type" data-list="BIKES"></select></label>
+        <label>Số xe<input data-k="bike.qty" type="number" min="0" inputmode="numeric"></label></div>
+      <div class="row2"><label>Từ ngày<input data-k="bike.from" type="date"></label><label>Đến ngày<input data-k="bike.to" type="date"></label></div>
+    </fieldset>
+
+    <fieldset data-opt="shower">
+      <legend><span class="n">6</span>Phòng tắm khi đợi xe</legend>
+      <label class="toggle"><input type="checkbox" data-k="shower.on">Có hỗ trợ</label>
+      <label class="opt">Ngày<input data-k="shower.date" type="date"></label>
+    </fieldset>
+    <fieldset>
+      <legend><span class="n">7</span>Vé xe Cao Bằng → Hà Nội</legend>
+      <div class="row2"><label>Ngày về<input data-k="x2.date" type="date"></label><label>Giờ xe<input data-k="x2.time" type="time"></label></div>
+      <label>Loại giường<select data-k="x2.tk" data-list="TICKETS"></select></label>
+      <label>Điểm đón<input data-k="x2.from"></label><div class="chips" data-pick="x2.from" data-list="STOPS"></div>
+      <label>Điểm trả<input data-k="x2.to"></label><div class="chips" data-pick="x2.to" data-list="STOPS"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Thanh toán</legend>
+      <div class="row2">
+        <label>Giá combo / khách<input data-k="price" data-money inputmode="numeric"></label>
+        <label>Đã đặt cọc<input data-k="deposit" data-money inputmode="numeric"></label>
+      </div>
+      <p class="hint" id="priceHint" style="color:var(--bad)"></p>
+      <label>QR thanh toán<select data-k="qr" data-list="QR_OPTS"></select></label>
+      <label class="opt-qr">Nội dung chuyển khoản<input data-k="qrNote" maxlength="70"></label>
+      <p class="hint opt-qr">Tự điền từ mã hóa đơn và tên khách, sửa được. <button type="button" class="link" id="qrReset">↺ Mặc định</button></p>
+      <label>Ghi chú<textarea data-k="note" rows="3"></textarea></label>
+    </fieldset>
+  </form>
+
+  <div class="hist">
+    <h2>Hóa đơn combo gần đây</h2>
+    <button type="button" class="btn ghost" id="histLoad" style="width:100%">Tải danh sách từ Google Sheet</button>
+    <div id="histList" style="margin-top:10px"></div>
+  </div>
+</section>
+
+<section class="preview" aria-label="Hóa đơn xem trước"><div id="pv"></div></section>
+</main>
+
+<div id="exp" aria-hidden="true"></div>
+<div class="bar">
+  <button type="button" class="btn ghost" id="toInv">Xem</button>
+  <button type="button" class="btn primary" id="dl">Tải ảnh</button>
+  <button type="button" class="btn primary" id="share">Chia sẻ</button>
+</div>
+<div class="toast" id="toast" role="status"></div>
+<script>
+// ── VIETQR (NAPAS/EMVCo payload, built locally) ──
+function vqrTLV(id,v){ return id+String(v.length).padStart(2,'0')+v; }
+function vqrCRC(s){
+  let c=0xFFFF;
+  for(let i=0;i<s.length;i++){
+    c^=s.charCodeAt(i)<<8;
+    for(let j=0;j<8;j++) c=(c&0x8000)?((c<<1)^0x1021)&0xFFFF:(c<<1)&0xFFFF;
+  }
+  return c.toString(16).toUpperCase().padStart(4,'0');
+}
+// same cleanup img.vietqr.io applied: no diacritics, letters/digits/spaces only, max 40 chars
+function vqrNote(s){
+  return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/đ/g,'d').replace(/Đ/g,'D').replace(/[^A-Za-z0-9 ]/g,'')
+    .replace(/\s+/g,' ').trim().slice(0,40).trim();
+}
+function vietqrPayload(bin,acc,amount,info){
+  const amt=Math.round(amount)>0?String(Math.round(amount)):'';
+  const note=vqrNote(info);
+  let s=vqrTLV('00','01')+vqrTLV('01',amt?'12':'11')
+    +vqrTLV('38',vqrTLV('00','A000000727')+vqrTLV('01',vqrTLV('00',bin)+vqrTLV('01',acc))+vqrTLV('02','QRIBFTTA'))
+    +vqrTLV('53','704')+(amt?vqrTLV('54',amt):'')+vqrTLV('58','VN')
+    +(note?vqrTLV('62',vqrTLV('08',note)):'')+'6304';
+  return s+vqrCRC(s);
+}
+const vqrCache={};
+function vietqrDataURL(payload){
+  if(vqrCache[payload]) return vqrCache[payload];
+  const qr=qrcode(0,'M'); qr.addData(payload); qr.make();
+  const n=qr.getModuleCount(), cell=8, pad=2, size=(n+pad*2)*cell;
+  const c=document.createElement('canvas'); c.width=c.height=size;
+  const g=c.getContext('2d');
+  g.fillStyle='#fff'; g.fillRect(0,0,size,size); g.fillStyle='#111';
+  for(let r=0;r<n;r++) for(let k=0;k<n;k++) if(qr.isDark(r,k)) g.fillRect((k+pad)*cell,(r+pad)*cell,cell,cell);
+  return vqrCache[payload]=c.toDataURL('image/png');
+}
+// same backend and Sheet URL setting as vi.html
+const DEFAULT_SHEET_URL='https://script.google.com/macros/s/AKfycbwNGLkdVW9f5EXB5Np8SISUj6pB61GPnDHqlZX2Y5EG88KNG0Y7IOf5QVYMcOKzupbs/exec';
+const LS_URL='sens_sheet_url_v1', LS_DRAFT='sens_combo_draft_v1';
+const BANKS={
+  personal:{bin:'970415', acc:'14862868', name:'TO THI PHUONG LINH', bank:'VietinBank'},
+  homestay:{bin:'970415', acc:'102885812778', name:'HDK SEN HOMESTAY', bank:'VietinBank'},
+  hung:    {bin:'970405', acc:'8314205207895', name:'TO VAN HUNG', bank:'Agribank'},
+};
+const LISTS={
+  TICKETS:['Giường nằm thường','Cabin đơn','Cabin đôi','Limousine'],
+  STAYS:["Sen's Homestay",'Đồi cỏ Ba Quang','Làng đá Khuổi Ky'],
+  STOPS:['Bến xe Mỹ Đình, Hà Nội','Bến xe Giáp Bát, Hà Nội',"Sen's Homestay, TP Cao Bằng"],
+  BIKES:['Honda Wave Alpha','Honda Future','Yamaha PG-1','Honda Vision','Honda Air Blade 125cc','Honda Air Blade 160cc','Honda Lead','Honda Winner X','Honda XR'],
+  QR_OPTS:[['none','Không hiện QR'],['homestay','Tài khoản Homestay (HKD Sen Homestay)'],['personal','Tài khoản Cá nhân (Tô Thị Phương Linh)'],['hung','Tài khoản Tô Văn Hùng (Agribank)']],
+};
+const STOP_LBL={'Bến xe Mỹ Đình, Hà Nội':'Mỹ Đình','Bến xe Giáp Bát, Hà Nội':'Giáp Bát',"Sen's Homestay, TP Cao Bằng":"Sen's Homestay"};
+// One entry per combo package. nights drives the stays and every date after them.
+const PACKAGES={
+  '3n2d':{lbl:'3N2Đ', title:'Hóa đơn Combo Cao Bằng 3 ngày 2 đêm', nights:2, price:3350000, stays:["Sen's Homestay",'Đồi cỏ Ba Quang']},
+  '2n1d':{lbl:'2N1Đ', title:'Hóa đơn Combo Cao Bằng 2 ngày 1 đêm', nights:1, price:0, stays:["Sen's Homestay"]},   // no list price yet: staff type it
+};
+const noteFor=p=>`Giá đã gồm xe khứ hồi, ${p.nights} đêm lưu trú, xe máy và các hỗ trợ trên. Chưa gồm xăng và vé tham quan.`;
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const num=v=>parseInt(String(v).replace(/\D/g,''),10)||0;
+const money=n=>Math.round(n).toLocaleString('vi-VN')+'đ';
+const fmtD=s=>{if(!s)return'—';const[y,m,d]=s.split('-');return`${d}/${m}/${y}`;};
+// local dates on purpose: toISOString() is UTC and lands a day early in Vietnam
+const isoLocal=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+function addDays(s,n){const d=new Date(s+'T00:00:00');d.setDate(d.getDate()+n);return isoLocal(d);}
+
+function blank(key='3n2d'){
+  const P=PACKAGES[key]||PACKAGES['3n2d'];
+  const S={code:'', created:isoLocal(new Date()), status:'draft', pkg:key,
+    guest:'', phone:'', pax:2, start:addDays(isoLocal(new Date()),7),
+    x1:{time:'21:00', tk:'Cabin đơn', from:LISTS.STOPS[0], to:LISTS.STOPS[2]},
+    early:{on:true}, stays:P.stays.map(place=>({place})),
+    bike:{type:'Honda Future', qty:2}, shower:{on:true},
+    x2:{time:'20:30', tk:'Cabin đơn', from:LISTS.STOPS[2], to:LISTS.STOPS[0]},
+    price:P.price, deposit:0, qr:'none', qrNote:'', qrNoteDirty:false, note:noteFor(P)};
+  chainDates(S); return S;
+}
+// night bus out on day 0, arrive day 1, one stay per night, night bus home the evening after the last night
+function chainDates(S){
+  const d=n=>addDays(S.start,n), last=d(1+S.stays.length);
+  S.early.date=d(1);
+  S.stays.forEach((st,i)=>{ st.in=d(1+i); st.out=d(2+i); });
+  S.bike.from=d(1); S.bike.to=last; S.shower.date=last; S.x2.date=last;
+}
+// fill keys missing from older drafts/rows with today's defaults
+function merge(base,o){
+  for(const k in o){ if(o[k]&&typeof o[k]==='object'&&!Array.isArray(o[k])&&base[k]&&typeof base[k]==='object') merge(base[k],o[k]); else if(o[k]!==undefined) base[k]=o[k]; }
+  return base;
+}
+const getP=(o,p)=>p.split('.').reduce((a,k)=>a==null?a:a[k],o);
+function setP(o,p,v){const ks=p.split('.');const last=ks.pop();ks.reduce((a,k)=>a[k],o)[last]=v;}
+
+let S=blank();
+const pkg=()=>PACKAGES[S.pkg]||PACKAGES['3n2d'];
+const totals=()=>{const t=S.price*Math.max(1,S.pax);return{t,c:S.deposit,r:t-S.deposit};};
+function defaultQRNote(){ return `${S.code||'COMBO'} ${S.guest}`.trim(); }
+// ── form <-> state ──
+function buildControls(root=document){
+  root.querySelectorAll('select[data-list]').forEach(sel=>{
+    sel.innerHTML=LISTS[sel.dataset.list].map(o=>Array.isArray(o)?`<option value="${esc(o[0])}">${esc(o[1])}</option>`:`<option>${esc(o)}</option>`).join('');
+  });
+  root.querySelectorAll('.chips[data-pick]').forEach(box=>{
+    box.innerHTML=LISTS[box.dataset.list].map((v,i)=>`<button type="button" data-i="${i}">${esc(STOP_LBL[v]||v)}</button>`).join('');
+  });
+}
+function drawStays(){
+  $('stays').innerHTML=S.stays.map((st,i)=>`<fieldset>
+      <legend><span class="n"></span>Đêm ${i+1} – Lưu trú</legend>
+      <div class="chips" data-pick="stays.${i}.place" data-list="STAYS"></div>
+      <label>Nơi ở (gõ nếu khác)<input data-k="stays.${i}.place"></label>
+      <div class="row2"><label>Nhận phòng<input data-k="stays.${i}.in" type="date"></label><label>Trả phòng<input data-k="stays.${i}.out" type="date"></label></div>
+    </fieldset>`).join('');
+  buildControls($('stays'));
+  document.querySelectorAll('#f legend .n').forEach((n,i)=>n.textContent=i+1);
+}
+function setPackage(key){
+  const old=pkg(), P=PACKAGES[key];
+  if(!P||key===S.pkg) return;
+  S.pkg=key;
+  S.stays=P.stays.map((place,i)=>({place:(S.stays[i]&&S.stays[i].place)||place}));
+  if(S.price===old.price) S.price=P.price;        // only replace a price nobody typed over
+  if(S.note===noteFor(old)) S.note=noteFor(P);
+  chainDates(S); drawStays(); changed(true);
+}
+function fillForm(){
+  if(!S.qrNoteDirty) S.qrNote=defaultQRNote();
+  document.querySelectorAll('[data-k]').forEach(el=>{
+    const v=getP(S,el.dataset.k);
+    if(el.type==='checkbox') el.checked=!!v;
+    else if(el.hasAttribute('data-money')) el.value=v?Number(v).toLocaleString('vi-VN'):'';
+    else if(document.activeElement!==el) el.value=v==null?'':v;
+  });
+  document.querySelectorAll('.chips[data-pick]').forEach(box=>{
+    const cur=getP(S,box.dataset.pick), list=LISTS[box.dataset.list];
+    box.querySelectorAll('button').forEach(b=>b.classList.toggle('on',list[b.dataset.i]===cur));
+  });
+  document.querySelectorAll('#pkgChips button').forEach(b=>b.classList.toggle('on',b.dataset.pkg===S.pkg));
+  document.querySelectorAll('fieldset[data-opt]').forEach(fs=>fs.classList.toggle('off',!S[fs.dataset.opt].on));
+  document.querySelectorAll('.opt-qr').forEach(el=>el.style.display=S.qr==='none'?'none':'');
+  $('qrReset').style.display=S.qrNoteDirty?'':'none';
+}
+function onField(e){
+  const el=e.target, k=el.dataset&&el.dataset.k; if(!k) return;
+  let v=el.type==='checkbox'?el.checked:el.value;
+  if(el.hasAttribute('data-money')||k==='pax'||k==='bike.qty') v=num(v);
+  if(k==='pax') v=Math.max(1,v);
+  setP(S,k,v);
+  if(k==='start'&&v) chainDates(S);
+  if(k==='qrNote') S.qrNoteDirty=String(v).trim()!=='';
+  changed(k==='start'||el.type==='checkbox'||el.tagName==='SELECT'||k==='guest');
+}
+function changed(refill){ if(refill) fillForm(); else if(!S.qrNoteDirty){ S.qrNote=defaultQRNote(); const q=document.querySelector('[data-k="qrNote"]'); if(q&&document.activeElement!==q) q.value=S.qrNote; }
+  render(); saveLocal(); syncSoon(); }
+
+// ── invoice ──
+function steps(){
+  const trip=x=>`${esc(x.time)} ngày ${fmtD(x.date||S.start)} · ${esc(x.tk)}<br>Đón: ${esc(x.from)} → Trả: ${esc(x.to)}`;
+  const out=[['Vé xe Hà Nội → Cao Bằng', trip(S.x1)]];
+  if(S.early.on) out.push(['Chỗ nghỉ khi tới sớm', `Ngày ${fmtD(S.early.date)}`]);
+  S.stays.forEach((st,i)=>out.push([`Đêm ${i+1} – `+esc(st.place), `Nhận phòng ${fmtD(st.in)} · Trả phòng ${fmtD(st.out)}`]));
+  if(S.bike.qty>0) out.push(['Xe máy di chuyển', `${S.bike.qty} xe ${esc(S.bike.type)} · ${fmtD(S.bike.from)} – ${fmtD(S.bike.to)}`]);
+  if(S.shower.on) out.push(['Phòng tắm khi đợi xe', `Ngày ${fmtD(S.shower.date)}`]);
+  out.push(['Vé xe Cao Bằng → Hà Nội', trip(S.x2)]);
+  return out;
+}
+function invoiceHTML(){
+  const T=totals(), b=BANKS[S.qr];
+  const pay=T.c>0?T.r:T.t;   // after a deposit the QR asks only for the rest
+  const qr=b&&pay>0?`<div class="qr"><img src="${vietqrDataURL(vietqrPayload(b.bin,b.acc,pay,S.qrNote))}" alt="QR">
+    <div><div class="t">Quét QR để ${T.c>0?'thanh toán phần còn lại':'thanh toán'}</div>
+      <div class="bk">${esc(b.bank)} · ${esc(b.name)}</div><div class="acc">${esc(b.acc)}</div>
+      <div>Số tiền: <span class="amt">${money(pay)}</span></div><div>ND: ${esc(vqrNote(S.qrNote))}</div></div></div>`:'';
+  return `<div class="inv">
+  <div class="inv-head"><div class="brand">Sen's Homestay<small>TP Cao Bằng · ĐT/Zalo 0822 946 888</small></div>
+    <div class="meta"><b>${esc(S.code||'Chưa có mã')}</b>Ngày lập: ${fmtD(S.created)}</div></div>
+  <div class="inv-body">
+    <p class="title">${esc(pkg().title)}</p>
+    <div class="cust"><div><span>Khách: </span><b>${esc(S.guest)||'—'}</b></div><div><span>SĐT: </span><b>${esc(S.phone)||'—'}</b></div>
+      <div><span>Số khách: </span><b>${S.pax}</b></div></div>
+    <ol>${steps().map((s,i)=>`<li><span class="i">${String(i+1).padStart(2,'0')}</span><div><h4>${s[0]}</h4><p>${s[1]}</p></div></li>`).join('')}</ol>
+    <div class="total"><span class="lbl">Tổng (${money(S.price)} × ${Math.max(1,S.pax)} khách)</span><span class="amt">${money(T.t)}</span></div>
+    <div class="pay"><div><span>Đã cọc: </span><b>${money(T.c)}</b></div><div><span>Còn lại: </span><b>${money(T.r)}</b></div></div>
+    ${qr}
+    ${S.note?`<p class="note">${esc(S.note)}</p>`:''}
+    <div class="foot">Cảm ơn quý khách đã chọn Sen's Homestay. Chúc chuyến đi Cao Bằng thật vui!</div>
+  </div></div>`;
+}
+function render(){
+  const h=invoiceHTML(); $('pv').innerHTML=h; $('exp').innerHTML=h; renderCodebar();
+  $('priceHint').textContent=S.price?'':'Gói này chưa có giá mặc định, hãy nhập giá combo / khách.';
+}
+// ── invoice code + Google Sheet ──
+let codeState='', codeErr='';
+function sheetURL(){ try{return (localStorage.getItem(LS_URL)||DEFAULT_SHEET_URL).trim();}catch(e){return DEFAULT_SHEET_URL;} }
+// Google now and then answers with an HTML error page instead of JSON: retry before giving up
+async function call(url,opt){
+  for(let i=0;;i++){
+    let text='';
+    try{ text=await (await fetch(url,opt)).text(); return JSON.parse(text); }
+    catch(e){
+      if(i>=2) throw new Error(text.trim().startsWith('<')?'Google Sheet tạm thời không trả lời':e.message);
+      await new Promise(r=>setTimeout(r,800*(i+1)));
+    }
+  }
+}
+const post=body=>call(sheetURL(),{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
+function renderCodebar(){
+  const bar=$('codebar');
+  if(S.code) bar.innerHTML=`<span>Mã hóa đơn</span><b>${esc(S.code)}</b><span class="hint">Lập ${fmtD(S.created)}</span>`;
+  else if(codeState==='loading') bar.innerHTML='<span>⏳ Đang lấy mã hóa đơn từ Google Sheet…</span>';
+  else bar.innerHTML=`<span>Chưa có mã hóa đơn</span><button type="button" class="btn ghost" id="retry">Lấy mã</button>${codeErr?`<span class="err">${esc(codeErr)}</span>`:''}`;
+}
+// the Sheet hands out SEN-YYMMDD-NN under a lock, so two phones never get the same number
+async function reserveCode(){
+  if(S.code) return;
+  codeState='loading'; codeErr=''; renderCodebar();
+  try{
+    const ymd=S.created.slice(2).replace(/-/g,'');
+    const d=await post({action:'comboReserve', ymd});
+    if(!d.code) throw new Error(d.error||'không rõ lỗi');
+    S.code=d.code; codeState='';
+    changed(true);
+  }catch(e){
+    codeState='err';
+    codeErr=/unknown action/.test(e.message)
+      ?'Apps Script chưa có phần combo: dán lại file apps-script.gs vào Apps Script rồi Deploy phiên bản mới.'
+      :'Không lấy được mã ('+e.message+'). Kiểm tra mạng rồi bấm Lấy mã.';
+    renderCodebar();
+  }
+}
+let syncTimer=null;
+function syncSoon(){ clearTimeout(syncTimer); if(S.code) syncTimer=setTimeout(syncNow,1500); }
+async function syncNow(){
+  if(!S.code) return;
+  const T=totals();
+  try{ await post({action:'comboSave', payload:{code:S.code, status:S.status, created:S.created, guest:S.guest, phone:S.phone,
+    pax:S.pax, start:S.start, pkg:S.pkg, total:T.t, deposit:T.c, balance:T.r, qr_account:S.qr, data:S}}); }
+  catch(e){ toast('Chưa lưu được lên Google Sheet, sẽ thử lại khi sửa tiếp'); }
+}
+function saveLocal(){ try{localStorage.setItem(LS_DRAFT,JSON.stringify(S));}catch(e){} }
+
+async function loadHistory(){
+  const box=$('histList'); box.innerHTML='<p class="hint">⏳ Đang tải…</p>';
+  try{
+    const d=await call(sheetURL()+'?action=comboList&limit=50');
+    if(d.error) throw new Error(d.error);
+    if(!d.items.length){ box.innerHTML='<p class="hint">Chưa có hóa đơn combo nào.</p>'; return; }
+    box.innerHTML=d.items.map((it,i)=>`<button type="button" class="hist-row" data-i="${i}">
+      <b>${esc(it.code)}</b><span class="r">${money(it.total||0)}</span>
+      <span>${esc(it.guest||'(chưa có tên)')}${it.data&&PACKAGES[it.data.pkg]?' · '+PACKAGES[it.data.pkg].lbl:''}</span><span class="r">Đi ${fmtD(it.data&&it.data.start)}${it.status==='final'?' · đã gửi':''}</span></button>`).join('');
+    box.onclick=e=>{ const row=e.target.closest('.hist-row'); if(!row) return;
+      const it=d.items[row.dataset.i]; if(!it.data){ toast('Dòng này chưa có dữ liệu'); return; }
+      S=merge(blank(it.data.pkg),it.data); drawStays(); fillForm(); render(); saveLocal(); toast('Đã mở '+S.code); window.scrollTo({top:0,behavior:'smooth'}); };
+  }catch(e){
+    box.innerHTML=`<p class="hint" style="color:var(--bad)">${/unknown action/.test(e.message)?'Apps Script chưa có phần combo: cần dán lại apps-script.gs và Deploy.':'Lỗi: '+esc(e.message)}</p>`;
+  }
+}
+// ── export ──
+let toastT=null;
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2600); }
+function fileName(){ return `${S.code||'combo'}-${(S.guest||'khach').trim().replace(/\s+/g,'-')}.png`; }
+async function snap(){
+  if(!S.code && !confirm('Hóa đơn chưa có mã. Vẫn xuất ảnh?')) return null;
+  if(document.fonts&&document.fonts.ready) await document.fonts.ready;   // Lora must be loaded or the image falls back to Georgia
+  render();
+  return html2canvas($('exp').firstElementChild,{scale:3,backgroundColor:'#fffdfa',logging:false,width:480,windowWidth:480});
+}
+function markSent(){ if(S.status!=='final'){ S.status='final'; saveLocal(); } syncNow(); }
+async function download(){
+  try{ const c=await snap(); if(!c) return;
+    const a=document.createElement('a'); a.download=fileName(); a.href=c.toDataURL('image/png'); a.click(); markSent();
+  }catch(e){ alert('Lỗi xuất ảnh: '+e.message); }
+}
+async function share(){
+  try{ const c=await snap(); if(!c) return;
+    const blob=await new Promise(r=>c.toBlob(r,'image/png'));
+    const file=new File([blob],fileName(),{type:'image/png'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})) await navigator.share({files:[file],title:'Hóa đơn '+(S.code||'combo')});
+    else { try{ await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]); toast('Đã sao chép ảnh, dán vào Zalo'); }
+           catch(e){ toast('Máy này không chia sẻ được, dùng nút Tải ảnh'); return; } }
+    markSent();
+  }catch(e){ if(e.name!=='AbortError') alert('Lỗi chia sẻ: '+e.message); }
+}
+
+// ── start ──
+function newBill(){
+  if(!confirm('Tạo hóa đơn combo mới? Hóa đơn đang làm vẫn nằm trong Google Sheet.')) return;
+  S=blank(S.pkg); drawStays(); fillForm(); render(); saveLocal(); reserveCode(); window.scrollTo({top:0,behavior:'smooth'});
+}
+function init(){
+  buildControls();
+  try{ const d=JSON.parse(localStorage.getItem(LS_DRAFT)); if(d) S=merge(blank(d.pkg),d); }catch(e){}
+  $('pkgChips').innerHTML=Object.entries(PACKAGES).map(([k,p])=>`<button type="button" data-pkg="${k}">${p.lbl}</button>`).join('');
+  const f=$('f');
+  f.addEventListener('input',onField); f.addEventListener('change',onField);
+  f.addEventListener('focusout',e=>{ if(e.target.hasAttribute&&e.target.hasAttribute('data-money')) fillForm(); });
+  f.addEventListener('click',e=>{
+    const pb=e.target.closest('[data-pkg]'); if(pb){ setPackage(pb.dataset.pkg); return; }
+    const b=e.target.closest('.chips[data-pick] button'); if(!b) return;
+    const box=b.parentElement; setP(S,box.dataset.pick,LISTS[box.dataset.list][b.dataset.i]); changed(true); });
+  $('qrReset').onclick=()=>{ S.qrNoteDirty=false; changed(true); };
+  $('codebar').addEventListener('click',e=>{ if(e.target.id==='retry') reserveCode(); });
+  $('newBill').onclick=newBill; $('histLoad').onclick=loadHistory;
+  $('dl').onclick=download; $('share').onclick=share;
+  $('toInv').onclick=()=>$('pv').scrollIntoView({behavior:'smooth',block:'start'});
+  drawStays(); fillForm(); render(); reserveCode();
+}
+init();
+</script>
+</body>
+</html>
