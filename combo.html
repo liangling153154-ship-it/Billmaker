@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Lora:ital,wght@0,600;0,700;1,500&display=swap">
 <script src="https://cdn.jsdelivr.net/npm/html2canvas-pro@1.6.7/dist/html2canvas-pro.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="sb.js"></script>
 <style>
 /* Combo tour module (design: Linh's sketch). Phones: form, then invoice. From 900px: side by side.
    The invoice keeps a fixed light palette so the exported image never follows dark mode. */
@@ -189,7 +190,7 @@ button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 
   <div class="hist">
     <h2>Hóa đơn combo gần đây</h2>
-    <button type="button" class="btn ghost" id="histLoad" style="width:100%">Tải danh sách từ Google Sheet</button>
+    <button type="button" class="btn ghost" id="histLoad" style="width:100%">Tải danh sách</button>
     <div id="histList" style="margin-top:10px"></div>
   </div>
 </section>
@@ -241,9 +242,7 @@ function vietqrDataURL(payload){
   for(let r=0;r<n;r++) for(let k=0;k<n;k++) if(qr.isDark(r,k)) g.fillRect((k+pad)*cell,(r+pad)*cell,cell,cell);
   return vqrCache[payload]=c.toDataURL('image/png');
 }
-// same backend and Sheet URL setting as vi.html
-const DEFAULT_SHEET_URL='https://script.google.com/macros/s/AKfycbwNGLkdVW9f5EXB5Np8SISUj6pB61GPnDHqlZX2Y5EG88KNG0Y7IOf5QVYMcOKzupbs/exec';
-const LS_URL='sens_sheet_url_v1', LS_DRAFT='sens_combo_draft_v1';
+const LS_DRAFT='sens_combo_draft_v1';
 const BANKS={
   personal:{bin:'970415', acc:'14862868', name:'TO THI PHUONG LINH', bank:'VietinBank'},
   homestay:{bin:'970415', acc:'102885812778', name:'HDK SEN HOMESTAY', bank:'VietinBank'},
@@ -398,71 +397,53 @@ function render(){
   const h=invoiceHTML(); $('pv').innerHTML=h; $('exp').innerHTML=h; renderCodebar();
   $('priceHint').textContent=S.price?'':'Gói này chưa có giá mặc định, hãy nhập giá combo / khách.';
 }
-// ── invoice code + Google Sheet ──
+// ── invoice code + Supabase ──
 let codeState='', codeErr='';
-function sheetURL(){ try{return (localStorage.getItem(LS_URL)||DEFAULT_SHEET_URL).trim();}catch(e){return DEFAULT_SHEET_URL;} }
-// Google now and then answers with an HTML error page instead of JSON: retry before giving up
-async function call(url,opt){
-  for(let i=0;;i++){
-    let text='';
-    try{ text=await (await fetch(url,opt)).text(); return JSON.parse(text); }
-    catch(e){
-      if(i>=2) throw new Error(text.trim().startsWith('<')?'Google Sheet tạm thời không trả lời':e.message);
-      await new Promise(r=>setTimeout(r,800*(i+1)));
-    }
-  }
-}
-const post=body=>call(sheetURL(),{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
 function renderCodebar(){
   const bar=$('codebar');
   if(S.code) bar.innerHTML=`<span>Mã hóa đơn</span><b>${esc(S.code)}</b><span class="hint">Lập ${fmtD(S.created)}</span>`;
-  else if(codeState==='loading') bar.innerHTML='<span>⏳ Đang lấy mã hóa đơn từ Google Sheet…</span>';
+  else if(codeState==='loading') bar.innerHTML='<span>⏳ Đang lấy mã hóa đơn…</span>';
   else bar.innerHTML=`<span>Chưa có mã hóa đơn</span><button type="button" class="btn ghost" id="retry">Lấy mã</button>${codeErr?`<span class="err">${esc(codeErr)}</span>`:''}`;
 }
-// the Sheet hands out SEN-YYMMDD-NN under a lock, so two phones never get the same number
+// the database hands out SEN-YYMMDD-NN under a row lock, so two phones never get the same number
 async function reserveCode(){
   if(S.code) return;
   codeState='loading'; codeErr=''; renderCodebar();
   try{
-    const ymd=S.created.slice(2).replace(/-/g,'');
-    const d=await post({action:'comboReserve', ymd});
-    if(!d.code) throw new Error(d.error||'không rõ lỗi');
-    S.code=d.code; codeState='';
+    const code=await sb('rpc/reserve_combo_code',{method:'POST',body:{p_ymd:S.created.slice(2).replace(/-/g,'')}});
+    if(!/^SEN-\d{6}-\d+$/.test(code)) throw new Error('mã trả về không hợp lệ');
+    S.code=code; codeState='';
     changed(true);
   }catch(e){
-    codeState='err';
-    codeErr=/unknown action/.test(e.message)
-      ?'Apps Script chưa có phần combo: dán lại file apps-script.gs vào Apps Script rồi Deploy phiên bản mới.'
-      :'Không lấy được mã ('+e.message+'). Kiểm tra mạng rồi bấm Lấy mã.';
+    codeState='err'; codeErr='Không lấy được mã ('+e.message+'). Kiểm tra mạng rồi bấm Lấy mã.';
     renderCodebar();
   }
 }
 let syncTimer=null;
-function syncSoon(){ clearTimeout(syncTimer); if(S.code) syncTimer=setTimeout(syncNow,1500); }
+function syncSoon(){ clearTimeout(syncTimer); if(S.code) syncTimer=setTimeout(syncNow,1200); }
 async function syncNow(){
   if(!S.code) return;
   const T=totals();
-  try{ await post({action:'comboSave', payload:{code:S.code, status:S.status, created:S.created, guest:S.guest, phone:S.phone,
-    pax:S.pax, start:S.start, pkg:S.pkg, total:T.t, deposit:T.c, balance:T.r, qr_account:S.qr, data:S}}); }
-  catch(e){ toast('Chưa lưu được lên Google Sheet, sẽ thử lại khi sửa tiếp'); }
+  try{ await sb('combos?on_conflict=code',{method:'POST',prefer:'resolution=merge-duplicates,return=minimal',
+    body:{code:S.code, status:S.status, pkg:S.pkg, created:S.created, guest:S.guest, phone:S.phone, pax:S.pax,
+      start:S.start||null, total:T.t, deposit:T.c, balance:T.r, qr_account:S.qr, data:S}}); }
+  catch(e){ toast('Chưa lưu được, sẽ thử lại khi sửa tiếp'); }
 }
 function saveLocal(){ try{localStorage.setItem(LS_DRAFT,JSON.stringify(S));}catch(e){} }
 
 async function loadHistory(){
   const box=$('histList'); box.innerHTML='<p class="hint">⏳ Đang tải…</p>';
   try{
-    const d=await call(sheetURL()+'?action=comboList&limit=50');
-    if(d.error) throw new Error(d.error);
-    if(!d.items.length){ box.innerHTML='<p class="hint">Chưa có hóa đơn combo nào.</p>'; return; }
-    box.innerHTML=d.items.map((it,i)=>`<button type="button" class="hist-row" data-i="${i}">
+    const rows=await sb('combos?select=code,status,guest,total,pkg,start,data&deleted_at=is.null&order=updated_at.desc&limit=60');
+    const items=rows.filter(r=>r.data&&r.data.code);   // skip numbers reserved but never filled in
+    if(!items.length){ box.innerHTML='<p class="hint">Chưa có hóa đơn combo nào.</p>'; return; }
+    box.innerHTML=items.map((it,i)=>`<button type="button" class="hist-row" data-i="${i}">
       <b>${esc(it.code)}</b><span class="r">${money(it.total||0)}</span>
-      <span>${esc(it.guest||'(chưa có tên)')}${it.data&&PACKAGES[it.data.pkg]?' · '+PACKAGES[it.data.pkg].lbl:''}</span><span class="r">Đi ${fmtD(it.data&&it.data.start)}${it.status==='final'?' · đã gửi':''}</span></button>`).join('');
+      <span>${esc(it.guest||'(chưa có tên)')}${PACKAGES[it.pkg]?' · '+PACKAGES[it.pkg].lbl:''}</span><span class="r">Đi ${fmtD(it.start)}${it.status==='final'?' · đã gửi':''}</span></button>`).join('');
     box.onclick=e=>{ const row=e.target.closest('.hist-row'); if(!row) return;
-      const it=d.items[row.dataset.i]; if(!it.data){ toast('Dòng này chưa có dữ liệu'); return; }
+      const it=items[row.dataset.i];
       S=merge(blank(it.data.pkg),it.data); drawStays(); fillForm(); render(); saveLocal(); toast('Đã mở '+S.code); window.scrollTo({top:0,behavior:'smooth'}); };
-  }catch(e){
-    box.innerHTML=`<p class="hint" style="color:var(--bad)">${/unknown action/.test(e.message)?'Apps Script chưa có phần combo: cần dán lại apps-script.gs và Deploy.':'Lỗi: '+esc(e.message)}</p>`;
-  }
+  }catch(e){ box.innerHTML=`<p class="hint" style="color:var(--bad)">Lỗi: ${esc(e.message)}</p>`; }
 }
 // ── export ──
 let toastT=null;
@@ -493,7 +474,7 @@ async function share(){
 
 // ── start ──
 function newBill(){
-  if(!confirm('Tạo hóa đơn combo mới? Hóa đơn đang làm vẫn nằm trong Google Sheet.')) return;
+  if(!confirm('Tạo hóa đơn combo mới? Hóa đơn đang làm vẫn được lưu.')) return;
   S=blank(S.pkg); drawStays(); fillForm(); render(); saveLocal(); reserveCode(); window.scrollTo({top:0,behavior:'smooth'});
 }
 function init(){

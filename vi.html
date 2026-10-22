@@ -6,6 +6,7 @@
 <title>Sen's Hóa Đơn</title>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas-pro@1.6.7/dist/html2canvas-pro.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="sb.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap');
 
@@ -504,10 +505,8 @@ input:focus, select:focus, textarea:focus {
 <div class="panel" id="panel-history">
   <div class="form-body">
     <div class="card">
-      <div class="card-head">⚙️ Cấu hình Google Sheets</div>
+      <div class="card-head">☁️ Lưu trữ (Supabase)</div>
       <div class="card-body">
-        <div class="field"><label>Apps Script Web App URL</label>
-          <input type="text" id="f-sheet-url" placeholder="https://script.google.com/macros/s/.../exec" oninput="saveConfig()" style="font-size:12px"></div>
         <div style="display:flex;gap:6px">
           <button onclick="testConn()" style="flex:1;padding:10px;border:1.5px solid var(--gold);background:var(--gold-bg);color:var(--navy);border-radius:8px;font-weight:600;cursor:pointer">🔌 Kiểm tra kết nối</button>
           <button onclick="loadHistory()" style="flex:1;padding:10px;border:1.5px solid var(--gold);background:var(--gold);color:#fff;border-radius:8px;font-weight:600;cursor:pointer">🔄 Tải lại</button>
@@ -522,7 +521,7 @@ input:focus, select:focus, textarea:focus {
         <div style="display:flex;flex-direction:column;gap:8px">
           <button onclick="clearCurrentDraft()" style="padding:10px;border:1.5px solid #ddd;background:#fff;border-radius:8px;font-weight:600;cursor:pointer;text-align:left">🗑️ Xóa nháp hiện tại <span style="font-weight:400;color:#888;font-size:11px">· Reset form về trắng</span></button>
           <button onclick="backupAll()" style="padding:10px;border:1.5px solid #ddd;background:#fff;border-radius:8px;font-weight:600;cursor:pointer;text-align:left">📥 Tải sao lưu JSON <span style="font-weight:400;color:#888;font-size:11px">· Backup toàn bộ lịch sử</span></button>
-          <button onclick="clearAllHistory()" style="padding:10px;border:1.5px solid #e57373;background:#fff5f5;color:#c62828;border-radius:8px;font-weight:600;cursor:pointer;text-align:left">🧹 Xóa toàn bộ lịch sử <span style="font-weight:400;font-size:11px">· Không thể hoàn tác</span></button>
+          <button onclick="clearAllHistory()" style="padding:10px;border:1.5px solid #e57373;background:#fff5f5;color:#c62828;border-radius:8px;font-weight:600;cursor:pointer;text-align:left">🧹 Ẩn toàn bộ lịch sử <span style="font-weight:400;font-size:11px">· Khôi phục được trong Supabase</span></button>
         </div>
       </div>
     </div>
@@ -653,7 +652,7 @@ function switchTab(t) {
   });
   document.getElementById('toggle-btn').textContent = t==='form' ? '👁' : '✏️';
   if (t==='preview') { renderPreview(); scalePreview(); }
-  if (t==='history' && getSheetURL()) loadHistory();
+  if (t==='history') loadHistory();
 }
 function toggleTab() { switchTab(curTab==='form'?'preview':'form'); }
 
@@ -685,10 +684,8 @@ function toggleGroup(key) {
 }
 
 // ════════════════════════════════════════════════════════════
-//  GOOGLE SHEETS SYNC
+//  SUPABASE SYNC
 // ════════════════════════════════════════════════════════════
-const DEFAULT_SHEET_URL = 'https://script.google.com/macros/s/AKfycbwNGLkdVW9f5EXB5Np8SISUj6pB61GPnDHqlZX2Y5EG88KNG0Y7IOf5QVYMcOKzupbs/exec';
-const LS_URL    = 'sens_sheet_url_v1';
 const LS_DRAFT  = 'sens_draft_vi_v1';
 const LS_INV_ID = 'sens_inv_id_vi_v1';
 let currentInvoiceId = null;
@@ -697,11 +694,7 @@ let saveTimer = null;
 let isApplying = false;
 let loadedDepositPaid = 0;
 
-function getSheetURL() { return (localStorage.getItem(LS_URL) || DEFAULT_SHEET_URL).trim(); }
-function saveConfig() {
-  localStorage.setItem(LS_URL, document.getElementById('f-sheet-url').value.trim());
-  document.getElementById('conn-status').textContent = '';
-}
+
 function showSync(msg, ms=1200) {
   const el=document.getElementById('sync-indicator');
   el.textContent=msg; el.style.display='block';
@@ -782,26 +775,22 @@ function saveLocal() {
 function scheduleSync(status='draft') {
   if (isApplying) return;
   saveLocal();
-  if (!getSheetURL()) return;
   clearTimeout(saveTimer);
   saveTimer = setTimeout(()=>syncNow(status), 2000);
 }
 
+// payload → invoices row; the full payload rides in data so applyPayload can reopen it as is
+function invoiceRow(p) {
+  return {id:p.id, status:p.status, lang:p.lang, invoice_type:p.invoice_type||'full', guest:p.guest||'', phone:p.phone||'',
+    room:p.room||'', checkin:p.checkin||null, checkout:p.checkout||null,
+    subtotal:Math.round(p.subtotal||0), balance:Math.round(p.balance||0), created_at:p.created_at, data:p};
+}
 async function syncNow(status='draft') {
-  const url=getSheetURL(); if(!url) return;
+  if (!currentInvoiceId) currentInvoiceId = newInvoiceId();
   showSync('💾 Đang lưu...', 600);
   try {
-    const payload=collectPayload(status);
-    const res=await fetch(url, {
-      method:'POST',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({action:'save', payload}),
-    });
-    const data=await res.json();
-    if (data.id) {
-      currentInvoiceId = data.id;
-      localStorage.setItem(LS_INV_ID, currentInvoiceId);
-    }
+    await sb('invoices?on_conflict=id', {method:'POST', prefer:'resolution=merge-duplicates,return=minimal', body:invoiceRow(collectPayload(status))});
+    localStorage.setItem(LS_INV_ID, currentInvoiceId);
     showSync('✅ Đã lưu');
   } catch (e) {
     showSync('⚠️ Lỗi lưu');
@@ -809,26 +798,20 @@ async function syncNow(status='draft') {
 }
 
 async function testConn() {
-  const url=getSheetURL();
   const el=document.getElementById('conn-status');
-  if(!url){el.textContent='⚠️ Chưa nhập URL';el.style.color='#c62828';return;}
   el.textContent='⏳ Đang kiểm tra...';el.style.color='#888';
+  const t0=performance.now();
   try {
-    const r=await fetch(url+'?action=ping');
-    const d=await r.json();
-    if(d.ok){el.textContent='✅ Kết nối OK ('+new Date(d.ts).toLocaleString('vi-VN')+')';el.style.color='#27ae60';}
-    else {el.textContent='⚠️ '+(d.error||'lỗi');el.style.color='#c62828';}
+    await sb('invoices?select=id&limit=1');
+    el.textContent='✅ Kết nối OK ('+Math.round(performance.now()-t0)+' ms)';el.style.color='#27ae60';
   } catch(e){el.textContent='⚠️ Lỗi: '+e.message;el.style.color='#c62828';}
 }
 
 async function loadHistory() {
-  const url=getSheetURL();
   const con=document.getElementById('hist-list');
-  if(!url){con.innerHTML='<p style="color:#c62828;padding:10px;font-size:13px">⚠️ Chưa cấu hình URL ở trên</p>';return;}
   con.innerHTML='<p style="color:#aaa;text-align:center;padding:20px 0;font-size:13px">⏳ Đang tải...</p>';
   try {
-    const r=await fetch(url+'?action=list&limit=100');
-    const d=await r.json();
+    const d={items: await sb('invoices?select=id,status,guest,room,subtotal,updated_at&deleted_at=is.null&order=updated_at.desc&limit=100')};
     if (!d.items || d.items.length===0) {
       con.innerHTML='<p style="color:#aaa;text-align:center;padding:20px 0;font-size:13px">Chưa có hóa đơn nào</p>';
       document.getElementById('hist-count').textContent='';
@@ -855,11 +838,10 @@ async function loadHistory() {
 }
 
 async function loadInvoice(id) {
-  const url=getSheetURL(); if(!url) return;
   showSync('⏳ Đang tải...', 600);
   try {
-    const r=await fetch(url+'?action=get&id='+encodeURIComponent(id));
-    const d=await r.json();
+    const rows=await sb('invoices?select=data&id=eq.'+encodeURIComponent(id));
+    const d={item: rows[0] && Object.assign({}, rows[0].data, {id})};
     if (d.item) {
       applyPayload(d.item);
       switchTab('form');
@@ -870,10 +852,10 @@ async function loadInvoice(id) {
 
 async function delInvoice(id, ev) {
   if (ev) ev.stopPropagation();
-  if (!confirm('Xóa hóa đơn này khỏi lịch sử?')) return;
-  const url=getSheetURL(); if(!url) return;
+  if (!confirm('Ẩn hóa đơn này khỏi lịch sử?\n(Vẫn khôi phục được trong Supabase)')) return;
   try {
-    await fetch(url, {method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'delete',id})});
+    // the public key cannot delete rows; hiding keeps the invoice recoverable
+    await sb('invoices?id=eq.'+encodeURIComponent(id), {method:'PATCH', prefer:'return=minimal', body:{deleted_at:new Date().toISOString()}});
     if (id===currentInvoiceId) { currentInvoiceId=newInvoiceId(); }
     loadHistory();
   } catch(e) { alert('Lỗi: '+e.message); }
@@ -902,24 +884,24 @@ function clearCurrentDraft() {
 }
 
 async function clearAllHistory() {
-  if (!confirm('⚠️ Xóa TOÀN BỘ lịch sử hóa đơn trên Google Sheet?\n\nHành động này KHÔNG THỂ HOÀN TÁC.')) return;
+  if (!confirm('⚠️ Ẩn TOÀN BỘ lịch sử hóa đơn?\n\nHóa đơn không bị xoá hẳn, vẫn khôi phục được trong Supabase.')) return;
   const code=prompt('Để xác nhận, nhập: XOA');
   if (code !== 'XOA') { alert('Đã hủy.'); return; }
-  const url=getSheetURL(); if(!url){alert('Chưa cấu hình URL');return;}
   try {
-    const r=await fetch(url, {method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'clearAll',confirm:'XOA'})});
-    const d=await r.json();
-    if (d.ok) { alert('✅ Đã xóa '+(d.cleared||0)+' hóa đơn.'); loadHistory(); }
-    else alert('Lỗi: '+(d.error||'unknown'));
+    await sb('invoices?deleted_at=is.null', {method:'PATCH', prefer:'return=minimal', body:{deleted_at:new Date().toISOString()}});
+    alert('✅ Đã ẩn toàn bộ lịch sử.'); loadHistory();
   } catch(e) { alert('Lỗi: '+e.message); }
 }
 
 async function backupAll() {
-  const url=getSheetURL(); if(!url){alert('Chưa cấu hình URL');return;}
   showSync('📥 Đang tải...', 600);
   try {
-    const r=await fetch(url+'?action=export');
-    const d=await r.json();
+    const all=[];
+    for (let off=0;;off+=1000) {
+      const page=await sb('invoices?select=*&deleted_at=is.null&order=updated_at.desc&limit=1000&offset='+off);
+      all.push(...page); if (page.length<1000) break;
+    }
+    const d={items:all, total:all.length, exported_at:new Date().toISOString()};
     const blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});
     const a=document.createElement('a');
     a.href=URL.createObjectURL(blob);
@@ -932,7 +914,6 @@ async function backupAll() {
 // ── INIT ──
 function init() {
   buildPresets();
-  document.getElementById('f-sheet-url').value = getSheetURL();
   const draft = localStorage.getItem(LS_DRAFT);
   if (draft) {
     try { applyPayload(JSON.parse(draft)); }
