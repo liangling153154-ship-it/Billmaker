@@ -87,6 +87,8 @@ button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .inv .meta b{display:block;font-size:.95rem;letter-spacing:.05em}
 .inv-body{padding:16px 18px;display:grid;gap:12px}
 .inv .title{font-family:var(--display);font-style:italic;font-size:1.12rem;margin:0}
+.inv .badge{justify-self:start;background:var(--i-soft);color:var(--i-accent);border:1px solid var(--i-accent);border-radius:999px;
+  padding:3px 12px;font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
 .inv .cust{display:grid;grid-template-columns:1fr 1fr;gap:3px 16px;font-size:.86rem;border-bottom:1px dashed var(--i-line);padding-bottom:12px}
 .inv .cust span,.inv .pay span{color:var(--i-muted)}
 .inv ol{list-style:none;margin:0;padding:0}
@@ -98,6 +100,8 @@ button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .inv .total .lbl{font-weight:600;font-size:.92rem}
 .inv .total .amt{font-family:var(--display);font-size:1.5rem;font-weight:700;color:var(--i-accent);white-space:nowrap}
 .inv .pay{display:grid;grid-template-columns:1fr 1fr;gap:3px 16px;font-size:.88rem}
+.inv .pay.rows{grid-template-columns:1fr}
+.inv .pay.rows div{display:flex;justify-content:space-between;gap:12px}
 .inv .qr{display:flex;gap:14px;align-items:center;border:1px solid var(--i-line);border-radius:10px;padding:12px;
   background:linear-gradient(135deg,#fffdfa 0%,var(--i-soft) 100%)}
 .inv .qr img{width:118px;height:118px;flex:none;background:#fff;border-radius:6px;padding:4px}
@@ -176,9 +180,14 @@ button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 
     <fieldset>
       <legend>Thanh toán</legend>
+      <div class="chips" id="modeChips">
+        <button type="button" data-mode="pay">Thanh toán</button>
+        <button type="button" data-mode="deposit">Đặt cọc</button>
+      </div>
       <div class="row2">
         <label>Giá combo / khách<input data-k="price" data-money inputmode="numeric"></label>
-        <label>Đã đặt cọc<input data-k="deposit" data-money inputmode="numeric"></label>
+        <label class="opt-pay">Đã đặt cọc<input data-k="deposit" data-money inputmode="numeric"></label>
+        <label class="opt-dep">% cọc<input data-k="depPct" type="number" min="1" max="100" inputmode="numeric"></label>
       </div>
       <p class="hint" id="priceHint" style="color:var(--bad)"></p>
       <label>QR thanh toán<select data-k="qr" data-list="QR_OPTS"></select></label>
@@ -280,7 +289,7 @@ function blank(key='3n2d'){
     early:{on:true}, stays:P.stays.map(place=>({place})),
     bike:{type:'Honda Future', qty:2}, shower:{on:true},
     x2:{time:'20:30', tk:'Cabin đơn', from:LISTS.STOPS[2], to:LISTS.STOPS[0]},
-    price:P.price, deposit:0, qr:'none', qrNote:'', qrNoteDirty:false, note:noteFor(P)};
+    price:P.price, deposit:0, mode:'pay', depPct:50, qr:'none', qrNote:'', qrNoteDirty:false, note:noteFor(P)};
   chainDates(S); return S;
 }
 // night bus out on day 0, arrive day 1, one stay per night, night bus home the evening after the last night
@@ -300,8 +309,13 @@ function setP(o,p,v){const ks=p.split('.');const last=ks.pop();ks.reduce((a,k)=>
 
 let S=blank();
 const pkg=()=>PACKAGES[S.pkg]||PACKAGES['3n2d'];
-const totals=()=>{const t=S.price*Math.max(1,S.pax);return{t,c:S.deposit,r:t-S.deposit};};
-function defaultQRNote(){ return `${S.code||'COMBO'} ${S.guest}`.trim(); }
+// deposit mode asks for depPct% of the total; pay mode subtracts what was already received
+const totals=()=>{
+  const t=S.price*Math.max(1,S.pax);
+  if(S.mode==='deposit'){ const c=Math.round(t*S.depPct/100); return {t, c, r:t-c, dep:true}; }
+  return {t, c:S.deposit, r:t-S.deposit, dep:false};
+};
+function defaultQRNote(){ return `${S.mode==='deposit'?'COC ':''}${S.code||'COMBO'} ${S.guest}`.trim(); }
 // ── form <-> state ──
 function buildControls(root=document){
   root.querySelectorAll('select[data-list]').forEach(sel=>{
@@ -330,6 +344,12 @@ function setPackage(key){
   if(S.note===noteFor(old)) S.note=noteFor(P);
   chainDates(S); drawStays(); changed(true);
 }
+// switching a deposit invoice to payment fills in the deposit it asked for, like vi.html does
+function setMode(m){
+  if(m===S.mode) return;
+  if(m==='pay' && S.mode==='deposit' && !S.deposit) S.deposit=totals().c;
+  S.mode=m; changed(true);
+}
 function fillForm(){
   if(!S.qrNoteDirty) S.qrNote=defaultQRNote();
   document.querySelectorAll('[data-k]').forEach(el=>{
@@ -345,6 +365,9 @@ function fillForm(){
   document.querySelectorAll('#pkgChips button').forEach(b=>b.classList.toggle('on',b.dataset.pkg===S.pkg));
   document.querySelectorAll('fieldset[data-opt]').forEach(fs=>fs.classList.toggle('off',!S[fs.dataset.opt].on));
   document.querySelectorAll('.opt-qr').forEach(el=>el.style.display=S.qr==='none'?'none':'');
+  document.querySelectorAll('#modeChips button').forEach(b=>b.classList.toggle('on',b.dataset.mode===S.mode));
+  document.querySelectorAll('.opt-dep').forEach(el=>el.style.display=S.mode==='deposit'?'':'none');
+  document.querySelectorAll('.opt-pay').forEach(el=>el.style.display=S.mode==='deposit'?'none':'');
   $('qrReset').style.display=S.qrNoteDirty?'':'none';
 }
 function onField(e){
@@ -352,6 +375,7 @@ function onField(e){
   let v=el.type==='checkbox'?el.checked:el.value;
   if(el.hasAttribute('data-money')||k==='pax'||k==='bike.qty') v=num(v);
   if(k==='pax') v=Math.max(1,v);
+  if(k==='depPct') v=Math.min(100,Math.max(1,num(v)||50));
   setP(S,k,v);
   if(k==='start'&&v) chainDates(S);
   if(k==='qrNote') S.qrNoteDirty=String(v).trim()!=='';
@@ -373,9 +397,9 @@ function steps(){
 }
 function invoiceHTML(){
   const T=totals(), b=BANKS[S.qr];
-  const pay=T.c>0?T.r:T.t;   // after a deposit the QR asks only for the rest
+  const pay=T.dep?T.c:T.c>0?T.r:T.t;   // deposit invoice: the deposit; after a deposit: only the rest
   const qr=b&&pay>0?`<div class="qr"><img src="${vietqrDataURL(vietqrPayload(b.bin,b.acc,pay,S.qrNote))}" alt="QR">
-    <div><div class="t">Quét QR để ${T.c>0?'thanh toán phần còn lại':'thanh toán'}</div>
+    <div><div class="t">Quét QR để ${T.dep?'đặt cọc':T.c>0?'thanh toán phần còn lại':'thanh toán'}</div>
       <div class="bk">${esc(b.bank)} · ${esc(b.name)}</div><div class="acc">${esc(b.acc)}</div>
       <div>Số tiền: <span class="amt">${money(pay)}</span></div><div>ND: ${esc(vqrNote(S.qrNote))}</div></div></div>`:'';
   return `<div class="inv">
@@ -383,11 +407,15 @@ function invoiceHTML(){
     <div class="meta"><b>${esc(S.code||'Chưa có mã')}</b>Ngày lập: ${fmtD(S.created)}</div></div>
   <div class="inv-body">
     <p class="title">${esc(pkg().title)}</p>
+    ${T.dep?`<span class="badge">Hóa đơn đặt cọc ${S.depPct}%</span>`:''}
     <div class="cust"><div><span>Khách: </span><b>${esc(S.guest)||'—'}</b></div><div><span>SĐT: </span><b>${esc(S.phone)||'—'}</b></div>
       <div><span>Số khách: </span><b>${S.pax}</b></div></div>
     <ol>${steps().map((s,i)=>`<li><span class="i">${String(i+1).padStart(2,'0')}</span><div><h4>${s[0]}</h4><p>${s[1]}</p></div></li>`).join('')}</ol>
-    <div class="total"><span class="lbl">Tổng (${money(S.price)} × ${Math.max(1,S.pax)} khách)</span><span class="amt">${money(T.t)}</span></div>
-    <div class="pay"><div><span>Đã cọc: </span><b>${money(T.c)}</b></div><div><span>Còn lại: </span><b>${money(T.r)}</b></div></div>
+    ${T.dep
+      ? `<div class="total"><span class="lbl">Cần cọc ${S.depPct}%</span><span class="amt">${money(T.c)}</span></div>
+    <div class="pay rows"><div><span>Tổng (${money(S.price)} × ${Math.max(1,S.pax)} khách)</span><b>${money(T.t)}</b></div><div><span>Còn lại</span><b>${money(T.r)}</b></div></div>`
+      : `<div class="total"><span class="lbl">Tổng (${money(S.price)} × ${Math.max(1,S.pax)} khách)</span><span class="amt">${money(T.t)}</span></div>
+    <div class="pay"><div><span>Đã cọc: </span><b>${money(T.c)}</b></div><div><span>Còn lại: </span><b>${money(T.r)}</b></div></div>`}
     ${qr}
     ${S.note?`<p class="note">${esc(S.note)}</p>`:''}
     <div class="foot">Cảm ơn quý khách đã chọn Sen's Homestay. Chúc chuyến đi Cao Bằng thật vui!</div>
@@ -486,6 +514,7 @@ function init(){
   f.addEventListener('focusout',e=>{ if(e.target.hasAttribute&&e.target.hasAttribute('data-money')) fillForm(); });
   f.addEventListener('click',e=>{
     const pb=e.target.closest('[data-pkg]'); if(pb){ setPackage(pb.dataset.pkg); return; }
+    const mb=e.target.closest('[data-mode]'); if(mb){ setMode(mb.dataset.mode); return; }
     const b=e.target.closest('.chips[data-pick] button'); if(!b) return;
     const box=b.parentElement; setP(S,box.dataset.pick,LISTS[box.dataset.list][b.dataset.i]); changed(true); });
   $('qrReset').onclick=()=>{ S.qrNoteDirty=false; changed(true); };
