@@ -163,6 +163,10 @@ button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
       <div class="row2"><label>Loại xe<select data-k="bike.type" data-list="BIKES"></select></label>
         <label>Số xe<input data-k="bike.qty" type="number" min="0" inputmode="numeric"></label></div>
       <div class="row2"><label>Từ ngày<input data-k="bike.from" type="date"></label><label>Đến ngày<input data-k="bike.to" type="date"></label></div>
+      <div id="bikeUpBox" style="display:none;background:var(--soft);border:1px solid var(--accent);border-radius:9px;padding:10px 12px">
+        <label>Phụ phí nâng cấp xe (mỗi xe / ngày)<input data-k="bikeUp.rate" data-money inputmode="numeric" placeholder="Nhập phụ phí"></label>
+        <p class="hint" id="bikeUpHint" style="margin-top:6px"></p>
+      </div>
     </fieldset>
 
     <fieldset data-opt="shower">
@@ -281,13 +285,22 @@ const fmtD=s=>{if(!s)return'—';const[y,m,d]=s.split('-');return`${d}/${m}/${y}
 const isoLocal=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 function addDays(s,n){const d=new Date(s+'T00:00:00');d.setDate(d.getDate()+n);return isoLocal(d);}
 
+// combo price includes Honda Wave; upgrades add a surcharge per bike per day (bảng giá combo: Vision/Future +70k, PG-1 +100k)
+const BASE_BIKE='Honda Wave Alpha';
+const BIKE_UPGRADE={'Honda Future':70000,'Honda Vision':70000,'Yamaha PG-1':100000};
+const isUpgrade=()=>S.bike.qty>0&&S.bike.type!==BASE_BIKE;
+function bikeDays(){ if(!S.bike.from||!S.bike.to) return 1;
+  return Math.max(1,Math.round((new Date(S.bike.to+'T00:00:00')-new Date(S.bike.from+'T00:00:00'))/864e5)+1); }
+const bikeUpTotal=()=>isUpgrade()?(Number(S.bikeUp.rate)||0)*S.bike.qty*bikeDays():0;
+// older saved combos had no surcharge: open them unchanged
+function fromSaved(d){ const o=merge(blank(d.pkg),d); if(!d.bikeUp) o.bikeUp={rate:0}; return o; }
 function blank(key='3n2d'){
   const P=PACKAGES[key]||PACKAGES['3n2d'];
   const S={code:'', created:isoLocal(new Date()), status:'draft', pkg:key,
     guest:'', phone:'', pax:2, start:addDays(isoLocal(new Date()),7),
     x1:{time:'21:00', tk:'Cabin đơn', from:LISTS.STOPS[0], to:LISTS.STOPS[2]},
     early:{on:true}, stays:P.stays.map(place=>({place})),
-    bike:{type:'Honda Future', qty:2}, shower:{on:true},
+    bike:{type:BASE_BIKE, qty:2}, bikeUp:{rate:0}, shower:{on:true},
     x2:{time:'20:30', tk:'Cabin đơn', from:LISTS.STOPS[2], to:LISTS.STOPS[0]},
     price:P.price, deposit:0, mode:'pay', depPct:50, qr:'none', qrNote:'', qrNoteDirty:false, note:noteFor(P)};
   chainDates(S); return S;
@@ -311,7 +324,7 @@ let S=blank();
 const pkg=()=>PACKAGES[S.pkg]||PACKAGES['3n2d'];
 // deposit mode asks for depPct% of the total; pay mode subtracts what was already received
 const totals=()=>{
-  const t=S.price*Math.max(1,S.pax);
+  const t=S.price*Math.max(1,S.pax)+bikeUpTotal();
   if(S.mode==='deposit'){ const c=Math.round(t*S.depPct/100); return {t, c, r:t-c, dep:true}; }
   return {t, c:S.deposit, r:t-S.deposit, dep:false};
 };
@@ -369,6 +382,14 @@ function fillForm(){
   document.querySelectorAll('.opt-dep').forEach(el=>el.style.display=S.mode==='deposit'?'':'none');
   document.querySelectorAll('.opt-pay').forEach(el=>el.style.display=S.mode==='deposit'?'none':'');
   $('qrReset').style.display=S.qrNoteDirty?'':'none';
+  drawBikeUp();
+}
+function drawBikeUp(){
+  $('bikeUpBox').style.display=isUpgrade()?'':'none';
+  if(!isUpgrade()) return;
+  const r=Number(S.bikeUp.rate)||0;
+  $('bikeUpHint').textContent=r?`${S.bike.qty} xe × ${bikeDays()} ngày × ${money(r)} = ${money(bikeUpTotal())} (cộng vào tổng)`
+    :`Đổi từ Wave sang ${S.bike.type}: nhập phụ phí mỗi xe / ngày.`;
 }
 function onField(e){
   const el=e.target, k=el.dataset&&el.dataset.k; if(!k) return;
@@ -378,10 +399,11 @@ function onField(e){
   if(k==='depPct') v=Math.min(100,Math.max(1,num(v)||50));
   setP(S,k,v);
   if(k==='start'&&v) chainDates(S);
+  if(k==='bike.type') S.bikeUp.rate=BIKE_UPGRADE[v]||0;
   if(k==='qrNote') S.qrNoteDirty=String(v).trim()!=='';
   changed(k==='start'||el.type==='checkbox'||el.tagName==='SELECT'||k==='guest');
 }
-function changed(refill){ if(refill) fillForm(); else if(!S.qrNoteDirty){ S.qrNote=defaultQRNote(); const q=document.querySelector('[data-k="qrNote"]'); if(q&&document.activeElement!==q) q.value=S.qrNote; }
+function changed(refill){ if(refill) fillForm(); else { drawBikeUp(); if(!S.qrNoteDirty){ S.qrNote=defaultQRNote(); const q=document.querySelector('[data-k="qrNote"]'); if(q&&document.activeElement!==q) q.value=S.qrNote; } }
   render(); saveLocal(); syncSoon(); }
 
 // ── invoice ──
@@ -391,6 +413,7 @@ function steps(){
   if(S.early.on) out.push(['Chỗ nghỉ khi tới sớm', `Ngày ${fmtD(S.early.date)}`]);
   S.stays.forEach((st,i)=>out.push([`Đêm ${i+1} – `+esc(st.place), `Nhận phòng ${fmtD(st.in)} · Trả phòng ${fmtD(st.out)}`]));
   if(S.bike.qty>0) out.push(['Xe máy di chuyển', `${S.bike.qty} xe ${esc(S.bike.type)} · ${fmtD(S.bike.from)} – ${fmtD(S.bike.to)}`]);
+  if(bikeUpTotal()>0) out.push(['Phụ phí nâng cấp xe', `${S.bike.qty} xe × ${bikeDays()} ngày × ${money(S.bikeUp.rate)} = ${money(bikeUpTotal())}`]);
   if(S.shower.on) out.push(['Phòng tắm khi đợi xe', `Ngày ${fmtD(S.shower.date)}`]);
   out.push(['Vé xe Cao Bằng → Hà Nội', trip(S.x2)]);
   return out;
@@ -413,8 +436,8 @@ function invoiceHTML(){
     <ol>${steps().map((s,i)=>`<li><span class="i">${String(i+1).padStart(2,'0')}</span><div><h4>${s[0]}</h4><p>${s[1]}</p></div></li>`).join('')}</ol>
     ${T.dep
       ? `<div class="total"><span class="lbl">Cần cọc ${S.depPct}%</span><span class="amt">${money(T.c)}</span></div>
-    <div class="pay rows"><div><span>Tổng (${money(S.price)} × ${Math.max(1,S.pax)} khách)</span><b>${money(T.t)}</b></div><div><span>Còn lại</span><b>${money(T.r)}</b></div></div>`
-      : `<div class="total"><span class="lbl">Tổng (${money(S.price)} × ${Math.max(1,S.pax)} khách)</span><span class="amt">${money(T.t)}</span></div>
+    <div class="pay rows"><div><span>Tổng (${money(S.price)} × ${Math.max(1,S.pax)} khách${bikeUpTotal()>0?' + phụ phí xe':''})</span><b>${money(T.t)}</b></div><div><span>Còn lại</span><b>${money(T.r)}</b></div></div>`
+      : `<div class="total"><span class="lbl">Tổng (${money(S.price)} × ${Math.max(1,S.pax)} khách${bikeUpTotal()>0?' + phụ phí xe':''})</span><span class="amt">${money(T.t)}</span></div>
     <div class="pay"><div><span>Đã cọc: </span><b>${money(T.c)}</b></div><div><span>Còn lại: </span><b>${money(T.r)}</b></div></div>`}
     ${qr}
     ${S.note?`<p class="note">${esc(S.note)}</p>`:''}
@@ -472,7 +495,7 @@ async function loadHistory(){
       <span>${esc(it.guest||'(chưa có tên)')}${PACKAGES[it.pkg]?' · '+PACKAGES[it.pkg].lbl:''}</span><span class="r">Đi ${fmtD(it.start)}${it.status==='final'?' · đã gửi':''}</span></button>`).join('');
     box.onclick=e=>{ const row=e.target.closest('.hist-row'); if(!row) return;
       const it=items[row.dataset.i];
-      S=merge(blank(it.data.pkg),it.data); if(it.customer_id) S.customer_id=it.customer_id; drawStays(); fillForm(); render(); saveLocal(); toast('Đã mở '+S.code); window.scrollTo({top:0,behavior:'smooth'}); };
+      S=fromSaved(it.data); if(it.customer_id) S.customer_id=it.customer_id; drawStays(); fillForm(); render(); saveLocal(); toast('Đã mở '+S.code); window.scrollTo({top:0,behavior:'smooth'}); };
   }catch(e){ box.innerHTML=`<p class="hint" style="color:var(--bad)">Lỗi: ${esc(e.message)}</p>`; }
 }
 // ── export ──
@@ -509,7 +532,7 @@ function newBill(){
 }
 function init(){
   buildControls();
-  try{ const d=JSON.parse(localStorage.getItem(LS_DRAFT)); if(d) S=merge(blank(d.pkg),d); }catch(e){}
+  try{ const d=JSON.parse(localStorage.getItem(LS_DRAFT)); if(d) S=fromSaved(d); }catch(e){}
   $('pkgChips').innerHTML=Object.entries(PACKAGES).map(([k,p])=>`<button type="button" data-pkg="${k}">${p.lbl}</button>`).join('');
   const f=$('f');
   f.addEventListener('input',onField); f.addEventListener('change',onField);
@@ -536,7 +559,7 @@ async function openFromUrl(){
     if(open){
       const rows=await sb('combos?select=code,data,customer_id&code=eq.'+encodeURIComponent(open));
       if(!rows.length||!rows[0].data||!rows[0].data.code){ toast('Không tìm thấy '+open); return false; }
-      S=merge(blank(rows[0].data.pkg),rows[0].data); if(rows[0].customer_id) S.customer_id=rows[0].customer_id;
+      S=fromSaved(rows[0].data); if(rows[0].customer_id) S.customer_id=rows[0].customer_id;
       drawStays(); fillForm(); render(); saveLocal(); toast('Đã mở '+S.code); return true;
     }
     const rows=await sb('customers?select=id,name,phone&id=eq.'+encodeURIComponent(kh));

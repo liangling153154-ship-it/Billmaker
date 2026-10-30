@@ -59,6 +59,20 @@ h2{font-family:var(--display);font-size:1.1rem;margin:16px 0 8px}
 .money div{background:var(--soft);border-radius:7px;padding:6px 8px;min-width:0}
 .money b{display:block;font-size:.88rem;white-space:nowrap}
 .pay{display:flex;justify-content:space-between;gap:8px;font-size:.85rem;border-top:1px dashed var(--line);padding:6px 0}
+.ck{display:flex;flex-direction:column;gap:2px}
+.ck-item{border-top:1px dashed var(--line);padding:10px 0;display:flex;flex-direction:column;gap:8px}
+.ck-item:first-of-type{border-top:0}
+.ck-head{display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap}
+.ck-head b{font-size:.92rem}
+.ck-seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.ck-seg button{font:600 12.5px var(--body);border:0;background:var(--field);color:var(--ink);padding:7px 11px;cursor:pointer;min-height:34px}
+.ck-seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.ck-seg button.ok[aria-pressed="true"]{background:var(--good);color:#fff}
+.ck-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.85rem;color:var(--muted)}
+.ck-row input,.ck-row select{width:auto;min-width:0;padding:7px 9px;font-size:15px}
+.ck-places{display:flex;flex-wrap:wrap;gap:6px}
+.ck-places label{flex-direction:row;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:5px 10px;color:var(--ink);font-size:.85rem;cursor:pointer}
+.ck-places input{width:18px;height:18px;margin:0;accent-color:var(--good)}
 .pay .x{background:none;border:0;color:var(--bad);cursor:pointer;font-size:.8rem}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:7;
   background:var(--ink);color:var(--paper);border-radius:999px;padding:8px 16px;font-size:.88rem;opacity:0;pointer-events:none;
@@ -224,6 +238,7 @@ function drawProfile(){
       <a class="btn small" style="background:#1e2d40;color:#fff;border-color:#1e2d40" href="en.html?kh=${encodeURIComponent(c.id)}">🌐 Invoice (English)</a>
     </div>
   </div>
+  ${checklistCard(c)}
   <h2>Hóa đơn (${bills.length})</h2>
   ${bills.length?bills.map((b,i)=>billCard(b,i,pays)).join(''):'<p class="hint">Khách này chưa có hóa đơn. Bấm một nút ở trên để tạo.</p>'}
   <div id="unlinked"></div>`;
@@ -231,7 +246,62 @@ function drawProfile(){
   $('eCancel').onclick=()=>{ $('pView').hidden=false; $('pForm').hidden=true; };
   $('pForm').onsubmit=saveCustomer;
   $('pDel').onclick=deleteCustomer;
+  wireChecklist();
   $('profile').querySelectorAll('[data-act]').forEach(el=>el.onclick=onBillAction);
+}
+// ── checklist chuẩn bị cho khách: lưu ở customers.checklist (supabase/003_checklist.sql) ──
+const BIKES=['Wave Alpha','Future','PG1','Vision','Air Blade','Winner','XR 150'];
+const PLACES=["Ba Quáng (Đồi Cỏ)",'86 Homestay','Yến Nhi','A Thám','Mế Farmstay','Khuổi Ky'];
+// each step: '' chưa · 'done' xong · 'skip' không cần
+function ckDone(k){ return k.st==='done'||k.st==='skip'; }
+function ckSteps(ck){
+  const g=k=>ck[k]||{};
+  return [
+    {key:'bus_out', title:'1a. Vé xe chiều đi', body:`<span>Số vé</span><input type="number" min="0" inputmode="numeric" data-ck="bus_out.qty" value="${esc(g('bus_out').qty??'')}" style="width:80px">`},
+    {key:'bus_back', title:'1b. Vé xe chiều về', body:`<span>Số vé</span><input type="number" min="0" inputmode="numeric" data-ck="bus_back.qty" value="${esc(g('bus_back').qty??'')}" style="width:80px">`},
+    {key:'bike', title:'2. Xe máy', body:`<span>Loại</span><select data-ck="bike.type"><option value="">—</option>${BIKES.map(b=>`<option${g('bike').type===b?' selected':''}>${b}</option>`).join('')}</select>
+      <span>Số lượng</span><input type="number" min="0" inputmode="numeric" data-ck="bike.qty" value="${esc(g('bike').qty??'')}" style="width:70px">`},
+    {key:'room', title:"3. Đã khóa phòng tại Sen's", body:`<span>Phòng</span><input data-ck="room.detail" placeholder="Ví dụ: Beige, 05–07/11" value="${esc(g('room').detail||'')}" style="flex:1">`},
+    {key:'other', title:'4. Đã đặt phòng điểm khác', body:`<div class="ck-places">${PLACES.map(p=>`<label><input type="checkbox" data-ckplace="${esc(p)}"${(g('other').places||[]).includes(p)?' checked':''}>${esc(p)}</label>`).join('')}</div>
+      <input data-ck="other.note" placeholder="Ghi chú: phòng nào, đêm nào" value="${esc(g('other').note||'')}" style="flex:1;min-width:200px">`},
+    {key:'early', title:'5. Khách đến sớm có nghỉ không', body:`<span>Giờ xe tới</span><input data-ck="early.time" placeholder="4:30" value="${esc(g('early').time||'')}" style="width:80px">`,
+      seg:[['','Chưa hỏi'],['done','Có nghỉ sớm'],['skip','Không nghỉ']]},
+  ];
+}
+function checklistCard(c){
+  const ck=c.checklist;
+  if(ck===undefined) return `<div class="card"><b>✅ Checklist chuẩn bị</b><p class="err" style="margin:6px 0 0">Cần chạy file supabase/003_checklist.sql trên Supabase để bật checklist.</p></div>`;
+  const steps=ckSteps(ck), done=steps.filter(s=>ckDone(ck[s.key]||{})).length;
+  return `<div class="card ck" id="ckCard">
+    <div class="row" style="justify-content:space-between"><b>✅ Checklist chuẩn bị</b><span class="chip ${done===steps.length?'s-paid':'s-sent'}">${done}/${steps.length} xong</span></div>
+    ${steps.map(s=>{ const st=(ck[s.key]||{}).st||'';
+      const seg=s.seg||[['','Chưa'],['done','Đã đặt'],['skip','Không cần']];
+      return `<div class="ck-item"><div class="ck-head"><b>${s.title}</b><span class="ck-seg" role="group" aria-label="${esc(s.title)}">${seg.map(([v,l])=>
+        `<button type="button" class="${v==='done'?'ok':''}" data-ckst="${s.key}" data-v="${v}" aria-pressed="${st===v}">${l}</button>`).join('')}</span></div>
+        <div class="ck-row">${s.body}</div></div>`; }).join('')}
+    <p class="hint" id="ckSaved"></p>
+  </div>`;
+}
+let ckT=null;
+function saveChecklist(){
+  clearTimeout(ckT); $('ckSaved').textContent='…';
+  ckT=setTimeout(async()=>{
+    try{ await sb('customers?id=eq.'+encodeURIComponent(cur.c.id),{method:'PATCH',prefer:'return=minimal',body:{checklist:cur.c.checklist}}); $('ckSaved').textContent='Đã lưu'; }
+    catch(err){ $('ckSaved').textContent='Chưa lưu được: '+errText(err); }
+  },500);
+}
+function wireChecklist(){
+  const card=$('ckCard'); if(!card) return;
+  const ck=cur.c.checklist, at=k=>(ck[k]=ck[k]||{});
+  card.querySelectorAll('[data-ckst]').forEach(b=>b.onclick=()=>{
+    at(b.dataset.ckst).st=b.dataset.v;
+    const html=checklistCard(cur.c); card.outerHTML=html; wireChecklist(); saveChecklist(); });
+  card.querySelectorAll('[data-ck]').forEach(el=>el.addEventListener('input',()=>{
+    const [k,f]=el.dataset.ck.split('.'); at(k)[f]=el.type==='number'?(el.value===''?'':Number(el.value)):el.value; saveChecklist(); }));
+  card.querySelectorAll('[data-ckplace]').forEach(el=>el.onchange=()=>{
+    const o=at('other'), set=new Set(o.places||[]); el.checked?set.add(el.dataset.ckplace):set.delete(el.dataset.ckplace);
+    o.places=[...set]; if(o.places.length&&!o.st) o.st='done';
+    const html=checklistCard(cur.c); card.outerHTML=html; wireChecklist(); saveChecklist(); });
 }
 function billCard(b,i,pays){
   const ps=pays.filter(p=>(b.kind==='combo'?p.combo_code:p.invoice_id)===b.ref);
