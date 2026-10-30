@@ -122,7 +122,7 @@ const fmtD=v=>{if(!v)return'';const[y,m,d]=String(v).slice(0,10).split('-');retu
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 // same rule as norm_phone() in the database
 const normPhone=p=>{const d=String(p||'').replace(/\D/g,'');return /^84\d{9}$/.test(d)?'0'+d.slice(2):d;};
-const STATE={draft:'Nháp',sent:'Chờ cọc',deposited:'Đã cọc',paid:'Đã thanh toán',cancelled:'Đã hủy'};
+const STATE={draft:'Nháp',sent:'Chờ cọc',deposited:'Đã cọc',paid:'✓ Hoàn thành',cancelled:'Đã hủy'};
 const chip=s=>`<span class="chip s-${esc(s)}">${esc(STATE[s]||s)}</span>`;
 const billName=b=>b.kind==='combo'?'Combo '+b.ref:'Hóa đơn '+(b.detail?'phòng '+b.detail:'phòng/xe');
 const editorUrl=b=>(b.kind==='combo'?'combo.html':'vi.html')+'?open='+encodeURIComponent(b.ref);
@@ -253,7 +253,11 @@ function billCard(b,i,pays){
     </form>
     <div class="row" style="margin-top:8px">
       <a class="btn ghost small" href="${editorUrl(b)}">Mở hóa đơn</a>
-      ${b.state!=='cancelled'?`<button type="button" class="btn primary small" data-act="pay" data-i="${i}">💵 Ghi thu tiền</button>`:''}
+      ${b.state==='paid'?`<span class="chip s-paid" style="align-self:center">✓ Đã thu đủ</span>`
+        :b.state==='cancelled'?'':Number(b.paid)>0
+        ?`<button type="button" class="btn primary small" data-act="payall" data-i="${i}">✓ Thu nốt ${money(b.remaining)}</button>
+          <button type="button" class="btn ghost small" data-act="pay" data-i="${i}">💵 Thu một phần</button>`
+        :`<button type="button" class="btn primary small" data-act="pay" data-i="${i}">💵 Ghi thu tiền</button>`}
       ${b.state==='draft'?`<button type="button" class="btn ghost small" data-act="sent" data-i="${i}">Đã gửi khách</button>`:''}
       ${b.state==='cancelled'?`<button type="button" class="btn ghost small" data-act="uncancel" data-i="${i}">Khôi phục</button>`
         :`<button type="button" class="btn danger small" data-act="cancel" data-i="${i}">Hủy</button>`}
@@ -263,6 +267,11 @@ async function onBillAction(e){
   const el=e.currentTarget, act=el.dataset.act, b=cur.bills[el.dataset.i];
   try{
     if(act==='pay'){ const f=document.querySelector(`[data-payform="${el.dataset.i}"]`); f.hidden=!f.hidden; f.onsubmit=ev=>savePay(ev,b); if(!f.hidden) f.amount.focus(); return; }
+    if(act==='payall'){ if(!confirm(`Ghi đã thu nốt ${money(b.remaining)} hôm nay cho ${billName(b)}?`)) return;
+      await sb('payments',{method:'POST',prefer:'return=minimal',body:{customer_id:cur.c.id,
+        invoice_id:b.kind==='invoice'?b.ref:null, combo_code:b.kind==='combo'?b.ref:null,
+        amount:Math.round(Number(b.remaining)), paid_on:today(), account:'', note:'thu nốt'}});
+      toast('Đã thu đủ · hoàn thành'); }
     if(act==='sent') await sb(table(b)+encodeURIComponent(b.ref),{method:'PATCH',prefer:'return=minimal',body:{status:'final'}});
     if(act==='cancel'){ if(!confirm('Hủy '+billName(b)+'? Có thể khôi phục lại sau.')) return;
       await sb(table(b)+encodeURIComponent(b.ref),{method:'PATCH',prefer:'return=minimal',body:{cancelled_at:new Date().toISOString()}}); }
@@ -327,7 +336,7 @@ async function loadFollow(){
   try{
     const rows=await sb('bills?select=*&state=in.(sent,deposited,draft)&order=start_date.asc.nullslast&limit=300');
     const t0=today(), t7=(()=>{const d=new Date();d.setDate(d.getDate()+7);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})();
-    const soon=await sb('bills?select=*&state=neq.cancelled&start_date=gte.'+t0+'&start_date=lte.'+t7+'&order=start_date.asc');
+    const soon=await sb('bills?select=*&state=in.(draft,sent,deposited)&start_date=gte.'+t0+'&start_date=lte.'+t7+'&order=start_date.asc');
     const ids=[...new Set(rows.concat(soon).map(r=>r.customer_id).filter(Boolean))];
     const names={};
     if(ids.length) (await sb('customers?select=id,name&id=in.('+ids.map(encodeURIComponent).join(',')+')')).forEach(c=>names[c.id]=c.name);
@@ -340,7 +349,7 @@ async function loadFollow(){
         ${b.customer_id?'':'<span class="m err" style="grid-column:1/-1">Chưa gắn mã khách</span>'}</a>
         <button type="button" class="x-del" data-kind="${b.kind}" data-ref="${esc(b.ref)}" data-name="${esc(billName(b))}" aria-label="Xoá ${esc(billName(b))}" style="border:0;border-left:1px solid var(--line);background:none;color:var(--bad);padding:0 14px;cursor:pointer;font:600 13px var(--body)">Xoá</button></div>`).join(''); };
     box.innerHTML=(group('soon','🚌 Sắp đến (7 ngày tới)','Chuẩn bị phòng, đón xe, nhắc khách mang theo phần tiền còn lại.')+group('sent','⏳ Chờ cọc','Đã gửi hóa đơn, chưa nhận đồng nào — nhắn lại khách.')+
-      group('deposited','💰 Đã cọc, còn phải thu','Thu nốt khi khách đến hoặc trước ngày đi.')+
+      group('deposited','💰 Đã cọc, còn phải thu','Thu nốt khi khách đến hoặc trước ngày đi. Thu đủ là hóa đơn tự chuyển sang Hoàn thành và rời khỏi danh sách này.')+
       group('draft','📝 Nháp','Hóa đơn chưa gửi khách.'))||'<p class="hint">Không có hóa đơn nào cần theo dõi. 🎉</p>';
     box.querySelectorAll('.x-del').forEach(el=>el.onclick=async()=>{
       if(!confirm('Xoá '+el.dataset.name+' khỏi danh sách?\n(Hóa đơn bị ẩn khỏi app, vẫn khôi phục được trong Supabase.)')) return;
