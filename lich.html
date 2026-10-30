@@ -56,6 +56,16 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font
 @media (min-width:640px){.mc{min-height:92px}.mc .lbl{display:block}}
 .mc .lbl{display:none;font-size:11px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #detail{margin-top:12px}
+.g{border-top:1px solid #f1e6da}
+.g summary{list-style:none;display:flex;align-items:center;gap:10px;padding:11px 12px;cursor:pointer;min-height:48px}
+.g summary::-webkit-details-marker{display:none}
+.g summary .w{flex:1;display:flex;flex-direction:column;gap:3px}
+.g .gd{display:flex;gap:3px}
+.g .gc{font-size:12.5px;color:var(--muted);white-space:nowrap}
+.g .chev{font-size:18px;color:var(--muted);transition:transform .15s}
+.g[open] .chev{transform:rotate(90deg)}
+.g[open] summary{background:#fbf5ef}
+.g .ev{padding-left:24px}
 .err{color:#b3261e}
 .sum{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:12px}
 .sum div{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px;font-size:12px;color:var(--muted)}
@@ -97,7 +107,7 @@ const ORDER=['arrive','bus','early','money','task','bike','stay','leave'];
 const TODAY=iso(new Date());
 let view='week', anchor=TODAY, events={}, sel=null;
 
-function add(day,type,title,meta,href){ if(!isDate(day)) return; (events[day]=events[day]||[]).push({type,title,meta,href}); }
+function add(day,type,title,meta,href){ if(!isDate(day)) return; const k=title.indexOf(' · '); (events[day]=events[day]||[]).push({type,who:k>0?title.slice(0,k):title,what:k>0?title.slice(k+3):title,title,meta,href}); }
 
 // ── build every task from bills, invoices, combos and guest checklists ──
 async function load(){
@@ -125,9 +135,9 @@ async function load(){
     }
     const ci=i.checkin, co=i.checkout||i.checkin;
     if(!isDate(ci)) return;
-    add(ci,'arrive',`${name} nhận phòng`,`Phòng ${i.room||'?'}${co&&co!==ci?' · đến '+dm(co):''}`,href);
-    for(let d=addD(ci,1); isDate(co)&&d<co; d=addD(d,1)) add(d,'stay',`${name} đang ở`,`Phòng ${i.room||'?'}`,href);
-    if(isDate(co)&&co!==ci) add(co,'leave',`${name} trả phòng`,`Phòng ${i.room||'?'}`,href);
+    add(ci,'arrive',`${name} · nhận phòng`,`Phòng ${i.room||'?'}${co&&co!==ci?' · đến '+dm(co):''}`,href);
+    for(let d=addD(ci,1); isDate(co)&&d<co; d=addD(d,1)) add(d,'stay',`${name} · đang ở`,`Phòng ${i.room||'?'}`,href);
+    if(isDate(co)&&co!==ci) add(co,'leave',`${name} · trả phòng`,`Phòng ${i.room||'?'}`,href);
     if(Number(b.remaining)>0&&Number(b.total)>0) add(ci,'money',`${name} · còn thu ${money(b.remaining)}`,`Phòng ${i.room||'?'}`,href);
     note(i.customer_id,ci);
   });
@@ -156,6 +166,16 @@ async function load(){
 }
 
 function dayEvents(day){ return (events[day]||[]).slice().sort((a,b)=>ORDER.indexOf(a.type)-ORDER.indexOf(b.type)); }
+// one row per guest; tap to open that guest's tasks for the day
+function groupsHTML(day){
+  const ev=dayEvents(day); if(!ev.length) return '<div class="empty">Không có việc</div>';
+  const by=new Map(); ev.forEach(e=>{ if(!by.has(e.who)) by.set(e.who,[]); by.get(e.who).push(e); });
+  return [...by.entries()].map(([who,list])=>{ const types=[...new Set(list.map(e=>e.type))];
+    return `<details class="g"><summary><span class="w"><b>${esc(who)}</b><span class="gd">${types.map(t=>`<i class="dot t-${t}"></i>`).join('')}</span></span>
+      <span class="gc">${list.length} việc</span><span class="chev" aria-hidden="true">›</span></summary>
+      ${list.map(e=>`<a class="ev t-${e.type}" href="${esc(e.href)}"><span class="bar-c" aria-hidden="true"></span><span class="w"><b>${esc(e.what)}</b><div class="m">${esc(e.meta)}</div></span></a>`).join('')}
+    </details>`; }).join('');
+}
 function evHTML(e){ return `<a class="ev t-${e.type}" href="${esc(e.href)}"><span class="bar-c" aria-hidden="true"></span><span class="w"><b>${esc(e.title)}</b><div class="m">${esc(e.meta)}</div></span></a>`; }
 function startOfWeek(s){ const d=D(s), k=(d.getDay()+6)%7; d.setDate(d.getDate()-k); return iso(d); }
 function summary(days){
@@ -170,7 +190,7 @@ function draw(){
     summary(days); $('detail').innerHTML='';
     $('cal').innerHTML=days.map(d=>{ const ev=dayEvents(d);
       return `<section class="day${d===TODAY?' today':''}"><div class="dh">${DOW[D(d).getDay()]} ${dm(d)}${d===TODAY?' <small>Hôm nay</small>':''}<small style="margin-left:auto">${ev.length?ev.length+' việc':''}</small></div>
-        ${ev.length?ev.map(evHTML).join(''):'<div class="empty">Không có việc</div>'}</section>`; }).join('');
+        ${groupsHTML(d)}</section>`; }).join('');
   } else {
     const a=D(anchor), first=iso(new Date(a.getFullYear(),a.getMonth(),1)), last=iso(new Date(a.getFullYear(),a.getMonth()+1,0));
     const s=startOfWeek(first), cells=[]; for(let d=s; d<=last||cells.length%7; d=addD(d,1)) cells.push(d);
@@ -184,7 +204,7 @@ function draw(){
           ${ev.length?`<span class="cnt">${ev.length} việc</span>`:''}</button>`; }).join('')}</div>`;
     $('cal').querySelectorAll('.mc').forEach(b=>b.onclick=()=>{ sel=b.dataset.day; if(sel<first||sel>last) anchor=sel; draw(); $('detail').scrollIntoView({behavior:'smooth',block:'start'}); });
     const d=sel&&sel>=first&&sel<=last?sel:null;
-    $('detail').innerHTML=d?`<section class="day"><div class="dh">${DOW[D(d).getDay()]} ${dm(d)}</div>${dayEvents(d).map(evHTML).join('')||'<div class="empty">Không có việc</div>'}</section>`
+    $('detail').innerHTML=d?`<section class="day"><div class="dh">${DOW[D(d).getDay()]} ${dm(d)}</div>${groupsHTML(d)}</section>`
       :'<p class="empty">Bấm vào một ngày để xem chi tiết.</p>';
   }
 }
