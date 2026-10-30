@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sen's Lịch sử hóa đơn</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Lora:wght@600;700&display=swap">
+<script src="sb.js"></script>
+<style>
+/* Lịch sử chung cho cả 3 nhánh: phòng & xe (Việt), combo, invoice (English). */
+:root{--bg:#f6efe8;--paper:#fffdfa;--ink:#2b1d14;--muted:#6e5a4b;--line:#e6d6c6;--brown:#a9541f;--brown-d:#7e3c14;--soft:#f3e2d3;
+  --navy:#1e2d40;--gold:#c9a84c;--display:"Lora",Georgia,serif;--body:"Be Vietnam Pro",system-ui,sans-serif}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45}
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;background:var(--paper);border-bottom:1px solid var(--line);
+  padding:max(10px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left))}
+.top a{color:var(--ink);text-decoration:none;font:600 13px var(--body);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+.top h1{margin:0;font:700 19px var(--display)}
+.wrap{max-width:640px;margin:0 auto;padding:14px max(16px,env(safe-area-inset-right)) 40px max(16px,env(safe-area-inset-left))}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.chips button{min-height:36px;padding:0 12px;border-radius:999px;font:600 13px var(--body);cursor:pointer;background:#fff;color:var(--ink);border:1px solid #dcc8b4}
+.chips button[aria-pressed="true"]{background:var(--brown);color:#fff;border-color:var(--brown)}
+.chips button.en[aria-pressed="true"]{background:var(--navy);border-color:var(--navy)}
+input[type=search]{width:100%;font:15px var(--body);color:var(--ink);background:#fff;border:1px solid #dcc8b4;border-radius:10px;padding:10px 12px;min-height:44px;margin-bottom:10px}
+.list{background:var(--paper);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.item{display:grid;grid-template-columns:36px 1fr auto;gap:2px 12px;align-items:center;padding:12px 14px;min-height:64px;border-top:1px solid #efe3d6;color:var(--ink);text-decoration:none}
+.item:first-child{border-top:0}
+.ic{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;grid-row:span 2;font-size:12px;font-weight:700}
+.ic.vn{background:var(--brown);color:#fff}.ic.combo{background:var(--soft);color:var(--brown-d)}.ic.en{background:var(--navy);color:var(--gold)}
+.m{font-size:12.5px;color:var(--muted)}
+.chip{font-size:11px;font-weight:600;border-radius:999px;padding:2px 8px;justify-self:end;border:1px solid}
+.s-draft{color:var(--muted);border-color:var(--line)}
+.s-sent{color:#8a4f00;border-color:#e0a54a;background:#fff4e0}
+.s-deposited{color:#1d5fa8;border-color:#7fb0e6;background:#eaf3fd}
+.s-paid{color:#2e6b32;border-color:#8fc79a;background:#eaf6ec}
+.s-cancelled{color:#b3261e;border-color:#e6a19c;background:#fdeceb;text-decoration:line-through}
+.hint{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<header class="top"><a href="index.html">☰ Menu</a><h1>Lịch sử hóa đơn</h1></header>
+<main class="wrap">
+  <input type="search" id="q" placeholder="Tìm tên khách, mã combo, phòng" aria-label="Tìm hóa đơn" autocomplete="off">
+  <div class="chips" id="fb" role="group" aria-label="Nhánh"></div>
+  <div class="chips" id="fs" role="group" aria-label="Trạng thái"></div>
+  <div id="list"><p class="hint">⏳ Đang tải…</p></div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>Math.round(n||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.')+' đ';
+const fmtD=v=>{if(!v)return'';const[y,m,d]=String(v).slice(0,10).split('-');return`${d}/${m}/${y}`;};
+const STATE={draft:'Nháp',sent:'Chờ cọc',deposited:'Đã cọc',paid:'Đã thanh toán',cancelled:'Đã hủy'};
+const BR=[['all','Tất cả'],['vn','Phòng & xe'],['combo','Combo'],['en','International']];
+const ST=[['all','Mọi trạng thái'],['draft','Nháp'],['sent','Chờ cọc'],['deposited','Đã cọc'],['paid','Đã thanh toán'],['cancelled','Đã hủy']];
+let rows=[], fb='all', fs='all';
+function chips(box,defs,cur,set){
+  box.innerHTML=defs.map(([id,l])=>`<button type="button" data-id="${id}" class="${id==='en'?'en':''}" aria-pressed="${id===cur}">${l}</button>`).join('');
+  box.onclick=e=>{const b=e.target.closest('button'); if(b){ set(b.dataset.id); draw(); }};
+}
+function branch(r){ return r.kind==='combo'?'combo':(r.lang==='en'?'en':'vn'); }
+function href(r){ const b=branch(r); return (b==='combo'?'combo.html':b==='en'?'en.html':'vi.html')+'?open='+encodeURIComponent(r.ref); }
+function draw(){
+  chips($('fb'),BR,fb,v=>fb=v); chips($('fs'),ST,fs,v=>fs=v);
+  const q=$('q').value.trim().toLowerCase();
+  const list=rows.filter(r=>(fb==='all'||branch(r)===fb)&&(fs==='all'||r.state===fs)&&
+    (!q||[r.guest,r.ref,r.detail,r.customer_id].join(' ').toLowerCase().includes(q)));
+  if(!list.length){ $('list').innerHTML='<p class="hint">Không có hóa đơn nào khớp bộ lọc.</p>'; return; }
+  $('list').innerHTML='<div class="list">'+list.map(r=>{ const b=branch(r);
+    const what=r.kind==='combo'?'Combo '+r.ref:(r.detail?'Phòng '+r.detail:'Hóa đơn phòng/xe');
+    return `<a class="item" href="${href(r)}"><span class="ic ${b}" aria-hidden="true">${b==='combo'?'C':b==='en'?'EN':'P'}</span>
+      <b>${esc(r.guest||'(chưa có tên)')}</b><span class="chip s-${r.state}">${STATE[r.state]}</span>
+      <span class="m">${esc(what)}${r.start_date?' · '+fmtD(r.start_date):''}</span><span class="m" style="justify-self:end;font-weight:600;color:var(--ink)">${money(r.total)}</span></a>`;}).join('')+'</div>';
+}
+$('q').addEventListener('input',draw);
+(async()=>{
+  try{
+    rows=await sb('bills?select=*&order=updated_at.desc&limit=500');
+    const ids=rows.filter(r=>r.kind==='invoice').map(r=>r.ref);
+    const langs={};
+    for(let i=0;i<ids.length;i+=80){
+      const part=await sb('invoices?select=id,lang&id=in.('+ids.slice(i,i+80).map(x=>'"'+encodeURIComponent(x)+'"').join(',')+')');
+      part.forEach(x=>langs[x.id]=x.lang);
+    }
+    rows.forEach(r=>{ if(r.kind==='invoice') r.lang=langs[r.ref]; });
+    draw();
+  }catch(e){ $('list').innerHTML=`<p class="hint" style="color:#b3261e">Lỗi: ${esc(e.message)}</p>`; }
+})();
+</script>
+</body>
+</html>
