@@ -120,6 +120,7 @@ button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 <header class="top">
   <a href="vi.html">← Hóa đơn</a>
   <h1>Combo tour</h1>
+  <a href="khach.html">👥 Khách</a>
   <button type="button" id="newBill">＋ Mới</button>
 </header>
 <main class="wrap">
@@ -429,7 +430,8 @@ function render(){
 let codeState='', codeErr='';
 function renderCodebar(){
   const bar=$('codebar');
-  if(S.code) bar.innerHTML=`<span>Mã hóa đơn</span><b>${esc(S.code)}</b><span class="hint">Lập ${fmtD(S.created)}</span>`;
+  if(S.code) bar.innerHTML=`<span>Mã hóa đơn</span><b>${esc(S.code)}</b><span class="hint">Lập ${fmtD(S.created)}</span>`+
+    (S.customer_id?`<span class="hint">👤 <a href="khach.html#${encodeURIComponent(S.customer_id)}">${esc(S.customer_id)}</a></span>`:'');
   else if(codeState==='loading') bar.innerHTML='<span>⏳ Đang lấy mã hóa đơn…</span>';
   else bar.innerHTML=`<span>Chưa có mã hóa đơn</span><button type="button" class="btn ghost" id="retry">Lấy mã</button>${codeErr?`<span class="err">${esc(codeErr)}</span>`:''}`;
 }
@@ -454,7 +456,8 @@ async function syncNow(){
   const T=totals();
   try{ await sb('combos?on_conflict=code',{method:'POST',prefer:'resolution=merge-duplicates,return=minimal',
     body:{code:S.code, status:S.status, pkg:S.pkg, created:S.created, guest:S.guest, phone:S.phone, pax:S.pax,
-      start:S.start||null, total:T.t, deposit:T.c, balance:T.r, qr_account:S.qr, data:S}}); }
+      start:S.start||null, total:T.t, deposit:T.c, balance:T.r, qr_account:S.qr, data:S,
+      ...(S.customer_id?{customer_id:S.customer_id}:{})}}); }
   catch(e){ toast('Chưa lưu được, sẽ thử lại khi sửa tiếp'); }
 }
 function saveLocal(){ try{localStorage.setItem(LS_DRAFT,JSON.stringify(S));}catch(e){} }
@@ -462,7 +465,7 @@ function saveLocal(){ try{localStorage.setItem(LS_DRAFT,JSON.stringify(S));}catc
 async function loadHistory(){
   const box=$('histList'); box.innerHTML='<p class="hint">⏳ Đang tải…</p>';
   try{
-    const rows=await sb('combos?select=code,status,guest,total,pkg,start,data&deleted_at=is.null&order=updated_at.desc&limit=60');
+    const rows=await sb('combos?select=code,status,guest,total,pkg,start,data,customer_id&deleted_at=is.null&order=updated_at.desc&limit=60');
     const items=rows.filter(r=>r.data&&r.data.code);   // skip numbers reserved but never filled in
     if(!items.length){ box.innerHTML='<p class="hint">Chưa có hóa đơn combo nào.</p>'; return; }
     box.innerHTML=items.map((it,i)=>`<button type="button" class="hist-row" data-i="${i}">
@@ -470,7 +473,7 @@ async function loadHistory(){
       <span>${esc(it.guest||'(chưa có tên)')}${PACKAGES[it.pkg]?' · '+PACKAGES[it.pkg].lbl:''}</span><span class="r">Đi ${fmtD(it.start)}${it.status==='final'?' · đã gửi':''}</span></button>`).join('');
     box.onclick=e=>{ const row=e.target.closest('.hist-row'); if(!row) return;
       const it=items[row.dataset.i];
-      S=merge(blank(it.data.pkg),it.data); drawStays(); fillForm(); render(); saveLocal(); toast('Đã mở '+S.code); window.scrollTo({top:0,behavior:'smooth'}); };
+      S=merge(blank(it.data.pkg),it.data); if(it.customer_id) S.customer_id=it.customer_id; drawStays(); fillForm(); render(); saveLocal(); toast('Đã mở '+S.code); window.scrollTo({top:0,behavior:'smooth'}); };
   }catch(e){ box.innerHTML=`<p class="hint" style="color:var(--bad)">Lỗi: ${esc(e.message)}</p>`; }
 }
 // ── export ──
@@ -522,7 +525,26 @@ function init(){
   $('newBill').onclick=newBill; $('histLoad').onclick=loadHistory;
   $('dl').onclick=download; $('share').onclick=share;
   $('toInv').onclick=()=>$('pv').scrollIntoView({behavior:'smooth',block:'start'});
-  drawStays(); fillForm(); render(); reserveCode();
+  drawStays(); fillForm(); render();
+  openFromUrl().then(took=>{ if(!took) reserveCode(); });
+}
+// combo.html?kh=KH-0001 → new combo for that guest · ?open=SEN-… → reopen a combo (links from khach.html)
+async function openFromUrl(){
+  const q=new URLSearchParams(location.search), kh=q.get('kh'), open=q.get('open');
+  if(!kh&&!open) return false;
+  history.replaceState(null,'',location.pathname);
+  try{
+    if(open){
+      const rows=await sb('combos?select=code,data,customer_id&code=eq.'+encodeURIComponent(open));
+      if(!rows.length||!rows[0].data||!rows[0].data.code){ toast('Không tìm thấy '+open); return false; }
+      S=merge(blank(rows[0].data.pkg),rows[0].data); if(rows[0].customer_id) S.customer_id=rows[0].customer_id;
+      drawStays(); fillForm(); render(); saveLocal(); toast('Đã mở '+S.code); return true;
+    }
+    const rows=await sb('customers?select=id,name,phone&id=eq.'+encodeURIComponent(kh));
+    if(!rows.length){ toast('Không tìm thấy khách '+kh); return false; }
+    S=blank(S.pkg); S.guest=rows[0].name||''; S.phone=rows[0].phone||''; S.customer_id=rows[0].id;
+    drawStays(); fillForm(); render(); saveLocal(); await reserveCode(); return true;
+  }catch(e){ toast('Lỗi: '+e.message); return false; }
 }
 init();
 </script>
