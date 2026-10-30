@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sen's Lịch công việc</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Lora:wght@600;700&display=swap">
+<script src="sb.js"></script>
+<style>
+/* Lịch công việc: mỗi ngày khách đến/đi, xe chạy, xe máy, nghỉ sớm, tiền còn thu, checklist chưa xong.
+   Tất cả tính từ hóa đơn + hồ sơ khách, không có dữ liệu riêng. */
+:root{--bg:#f6efe8;--paper:#fffdfa;--ink:#2b1d14;--muted:#6e5a4b;--line:#e6d6c6;--brown:#a9541f;--brown-d:#7e3c14;--soft:#f3e2d3;
+  --navy:#1e2d40;--display:"Lora",Georgia,serif;--body:"Be Vietnam Pro",system-ui,sans-serif}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45}
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;background:var(--paper);border-bottom:1px solid var(--line);
+  padding:max(10px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left))}
+.top a{color:var(--ink);text-decoration:none;font:600 13px var(--body);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+.top h1{margin:0;font:700 19px var(--display);flex:1}
+.wrap{max-width:900px;margin:0 auto;padding:12px max(14px,env(safe-area-inset-right)) 40px max(14px,env(safe-area-inset-left))}
+.bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.seg{display:inline-flex;background:#ebddcf;border-radius:10px;padding:3px}
+.seg button{border:0;background:transparent;font:600 13px var(--body);color:var(--ink);padding:8px 14px;border-radius:8px;cursor:pointer;min-height:38px}
+.seg button[aria-pressed="true"]{background:var(--brown);color:#fff}
+.nav button{border:1px solid var(--line);background:var(--paper);color:var(--ink);font:600 13px var(--body);border-radius:9px;min-width:40px;min-height:38px;cursor:pointer;padding:0 10px}
+.title{font:700 16px var(--display);margin-left:auto}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:2px 0 12px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.dot{width:10px;height:10px;border-radius:3px;display:inline-block;flex:none}
+.t-arrive{--c:#2e7d32}.t-leave{--c:#c26a00}.t-stay{--c:#8d7b6c}.t-bus{--c:#1e2d40}.t-bike{--c:#a9541f}.t-early{--c:#6a3fb0}.t-money{--c:#b3261e}.t-task{--c:#b26a00}
+.dot{background:var(--c)}
+/* week */
+.day{background:var(--paper);border:1px solid var(--line);border-radius:12px;margin-bottom:8px;overflow:hidden}
+.day.today{border-color:var(--brown);box-shadow:0 0 0 2px #a9541f33}
+.dh{display:flex;align-items:baseline;gap:8px;padding:8px 12px;background:#f8efe6;font-weight:700}
+.dh small{font-weight:500;color:var(--muted)}
+.day.today .dh{background:var(--brown);color:#fff}.day.today .dh small{color:#ffe2c2}
+.ev{display:flex;gap:10px;align-items:flex-start;padding:8px 12px;border-top:1px solid #f1e6da;text-decoration:none;color:var(--ink)}
+.ev .bar-c{width:4px;align-self:stretch;border-radius:2px;background:var(--c);flex:none}
+.ev .w{flex:1;min-width:0}
+.ev b{font-size:14px}
+.ev .m{font-size:12.5px;color:var(--muted)}
+.empty{padding:8px 12px;font-size:13px;color:var(--muted)}
+/* month */
+.mgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.mh{font-size:11.5px;font-weight:700;color:var(--muted);text-align:center;padding:2px 0}
+.mc{background:var(--paper);border:1px solid var(--line);border-radius:8px;min-height:64px;padding:4px;cursor:pointer;display:flex;flex-direction:column;gap:3px;font:inherit;color:inherit;text-align:left}
+.mc.out{opacity:.45}
+.mc.today{border-color:var(--brown);box-shadow:0 0 0 2px #a9541f33}
+.mc.sel{background:var(--soft);border-color:var(--brown)}
+.mc .n{font-size:12.5px;font-weight:700}
+.mc .dots{display:flex;flex-wrap:wrap;gap:2px}
+.mc .cnt{font-size:10.5px;color:var(--muted)}
+@media (min-width:640px){.mc{min-height:92px}.mc .lbl{display:block}}
+.mc .lbl{display:none;font-size:11px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#detail{margin-top:12px}
+.err{color:#b3261e}
+.sum{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:12px}
+.sum div{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px;font-size:12px;color:var(--muted)}
+.sum b{display:block;font-size:18px;color:var(--ink)}
+</style>
+</head>
+<body>
+<header class="top"><a href="index.html">☰ Menu</a><h1>Lịch công việc</h1></header>
+<main class="wrap">
+  <div class="bar">
+    <div class="seg" role="group" aria-label="Chế độ xem">
+      <button type="button" data-view="week" aria-pressed="true">Tuần</button>
+      <button type="button" data-view="month" aria-pressed="false">Tháng</button>
+    </div>
+    <div class="nav"><button type="button" id="prev" aria-label="Trước">‹</button> <button type="button" id="today">Hôm nay</button> <button type="button" id="next" aria-label="Sau">›</button></div>
+    <span class="title" id="title"></span>
+  </div>
+  <div class="legend">
+    <span class="t-arrive"><i class="dot"></i>Khách đến</span><span class="t-leave"><i class="dot"></i>Khách đi</span>
+    <span class="t-stay"><i class="dot"></i>Đang ở</span><span class="t-bus"><i class="dot"></i>Xe khách</span>
+    <span class="t-bike"><i class="dot"></i>Xe máy</span><span class="t-early"><i class="dot"></i>Nghỉ sớm</span>
+    <span class="t-money"><i class="dot"></i>Còn thu tiền</span><span class="t-task"><i class="dot"></i>Checklist chưa xong</span>
+  </div>
+  <div class="sum" id="sum"></div>
+  <div id="cal"><p class="empty">⏳ Đang tải…</p></div>
+  <div id="detail"></div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>Math.round(n||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.')+' đ';
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const D=s=>new Date(s+'T00:00:00');
+const addD=(s,n)=>{const d=D(s);d.setDate(d.getDate()+n);return iso(d);};
+const isDate=s=>/^\d{4}-\d{2}-\d{2}$/.test(s||'');
+const DOW=['CN','T2','T3','T4','T5','T6','T7'];
+const dm=s=>{const[,m,d]=s.split('-');return d+'/'+m;};
+const ORDER=['arrive','bus','early','money','task','bike','stay','leave'];
+const TODAY=iso(new Date());
+let view='week', anchor=TODAY, events={}, sel=null;
+
+function add(day,type,title,meta,href){ if(!isDate(day)) return; (events[day]=events[day]||[]).push({type,title,meta,href}); }
+
+// ── build every task from bills, invoices, combos and guest checklists ──
+async function load(){
+  const [bills,invs,combos,custs]=await Promise.all([
+    sb('bills?select=*&state=neq.cancelled&limit=1000'),
+    sb('invoices?select=id,invoice_type,room,checkin,checkout,guest,customer_id,data&deleted_at=is.null&cancelled_at=is.null&limit=1000'),
+    sb('combos?select=code,guest,customer_id,pax,data&deleted_at=is.null&cancelled_at=is.null&limit=1000'),
+    sb('customers?select=id,name,checklist&deleted_at=is.null&limit=1000')]);
+  const B={}; bills.forEach(b=>B[b.kind+':'+b.ref]=b);
+  const C={}; custs.forEach(c=>C[c.id]=c);
+  const who=(cid,g)=>(C[cid]&&C[cid].name)||g||'(chưa có tên)';
+  const prof=(cid,href)=>cid?'khach.html#'+encodeURIComponent(cid):href;
+  const firstDay={};   // guest → earliest arrival, for checklist reminders
+  const note=(cid,day)=>{ if(cid&&isDate(day)&&day>=TODAY&&(!firstDay[cid]||day<firstDay[cid])) firstDay[cid]=day; };
+
+  invs.forEach(i=>{
+    const b=B['invoice:'+i.id]; if(!b) return;
+    const name=who(i.customer_id,i.guest), lang=(i.data&&i.data.lang)==='en'?'en':'vi';
+    const href=prof(i.customer_id,(lang==='en'?'en.html':'vi.html')+'?open='+encodeURIComponent(i.id));
+    if(i.invoice_type==='bus'){
+      const legs=((i.data&&i.data.items)||[]).map(it=>it.bus).filter(x=>x&&isDate(x.date)).sort((a,b)=>a.date<b.date?-1:1);
+      legs.forEach(x=>{ add(x.date,'bus',`${name} · xe ${esc(x.time||'')}`,`${x.from||''} → ${x.to||''}${x.co?' · '+x.co:''}`,href); note(i.customer_id,x.date); });
+      if(legs.length&&Number(b.remaining)>0&&Number(b.total)>0) add(legs[0].date,'money',`${name} · còn thu ${money(b.remaining)}`,'Vé xe đặt hộ',href);
+      return;
+    }
+    const ci=i.checkin, co=i.checkout||i.checkin;
+    if(!isDate(ci)) return;
+    add(ci,'arrive',`${name} nhận phòng`,`Phòng ${i.room||'?'}${co&&co!==ci?' · đến '+dm(co):''}`,href);
+    for(let d=addD(ci,1); isDate(co)&&d<co; d=addD(d,1)) add(d,'stay',`${name} đang ở`,`Phòng ${i.room||'?'}`,href);
+    if(isDate(co)&&co!==ci) add(co,'leave',`${name} trả phòng`,`Phòng ${i.room||'?'}`,href);
+    if(Number(b.remaining)>0&&Number(b.total)>0) add(ci,'money',`${name} · còn thu ${money(b.remaining)}`,`Phòng ${i.room||'?'}`,href);
+    note(i.customer_id,ci);
+  });
+
+  combos.forEach(c=>{
+    const b=B['combo:'+c.code], S=c.data||{}; if(!b) return;
+    const name=who(c.customer_id,c.guest), href=prof(c.customer_id,'combo.html?open='+encodeURIComponent(c.code));
+    const x1=S.x1||{}, x2=S.x2||{}, go=isDate(x1.date)?x1.date:b.start_date;
+    add(go,'bus',`${name} · lên xe ${x1.time||''}`,`Combo ${c.code} · ${c.pax||''} khách · ${x1.from||''} → ${x1.to||''}`,href);
+    if(S.early&&S.early.on) add(S.early.date,'early',`${name} · nghỉ sớm khi xe tới`,`Combo ${c.code} · ${c.pax||''} khách`,href);
+    (S.stays||[]).forEach((st,k)=>{ if(isDate(st.in)) add(st.in,k===0?'arrive':'stay',`${name} · đêm ${k+1} ${st.place||''}`,`Combo ${c.code}`,href); });
+    if(S.bike&&S.bike.qty>0) add(S.bike.from,'bike',`${name} · giao ${S.bike.qty} xe ${S.bike.type||''}`,`Đến ${isDate(S.bike.to)?dm(S.bike.to):'?'}`,href);
+    if(S.shower&&S.shower.on) add(S.shower.date,'leave',`${name} · tắm, chờ xe về`,`Combo ${c.code}`,href);
+    add(x2.date,'bus',`${name} · xe về ${x2.time||''}`,`${x2.from||''} → ${x2.to||''}`,href);
+    if(Number(b.remaining)>0) add(isDate(S.early&&S.early.date)?S.early.date:addD(go,1),'money',`${name} · còn thu ${money(b.remaining)}`,`Combo ${c.code}`,href);
+    note(c.customer_id,go);
+  });
+
+  // checklist not finished: remind on the guest's first upcoming day
+  const STEPS=['bus_out','bus_back','bike','room','other','early','taxi'];
+  Object.entries(firstDay).forEach(([cid,day])=>{
+    const ck=(C[cid]&&C[cid].checklist)||{};
+    const left=STEPS.filter(k=>!(ck[k]&&(ck[k].st==='done'||ck[k].st==='skip'))).length;
+    if(left) add(day,'task',`${who(cid)} · checklist còn ${left} mục`,'Mở hồ sơ để hoàn thành','khach.html#'+encodeURIComponent(cid));
+  });
+}
+
+function dayEvents(day){ return (events[day]||[]).slice().sort((a,b)=>ORDER.indexOf(a.type)-ORDER.indexOf(b.type)); }
+function evHTML(e){ return `<a class="ev t-${e.type}" href="${esc(e.href)}"><span class="bar-c" aria-hidden="true"></span><span class="w"><b>${esc(e.title)}</b><div class="m">${esc(e.meta)}</div></span></a>`; }
+function startOfWeek(s){ const d=D(s), k=(d.getDay()+6)%7; d.setDate(d.getDate()-k); return iso(d); }
+function summary(days){
+  const all=days.flatMap(d=>events[d]||[]), n=t=>all.filter(e=>e.type===t).length;
+  $('sum').innerHTML=`<div>Khách đến<b>${n('arrive')}</b></div><div>Chuyến xe<b>${n('bus')}</b></div><div>Còn thu<b>${n('money')}</b></div><div>Checklist<b>${n('task')}</b></div>`;
+}
+function draw(){
+  document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.view===view));
+  if(view==='week'){
+    const s=startOfWeek(anchor), days=[...Array(7)].map((_,k)=>addD(s,k));
+    $('title').textContent=`${dm(days[0])} – ${dm(days[6])}/${days[6].slice(0,4)}`;
+    summary(days); $('detail').innerHTML='';
+    $('cal').innerHTML=days.map(d=>{ const ev=dayEvents(d);
+      return `<section class="day${d===TODAY?' today':''}"><div class="dh">${DOW[D(d).getDay()]} ${dm(d)}${d===TODAY?' <small>Hôm nay</small>':''}<small style="margin-left:auto">${ev.length?ev.length+' việc':''}</small></div>
+        ${ev.length?ev.map(evHTML).join(''):'<div class="empty">Không có việc</div>'}</section>`; }).join('');
+  } else {
+    const a=D(anchor), first=iso(new Date(a.getFullYear(),a.getMonth(),1)), last=iso(new Date(a.getFullYear(),a.getMonth()+1,0));
+    const s=startOfWeek(first), cells=[]; for(let d=s; d<=last||cells.length%7; d=addD(d,1)) cells.push(d);
+    $('title').textContent=`Tháng ${a.getMonth()+1}/${a.getFullYear()}`;
+    summary(cells.filter(d=>d>=first&&d<=last));
+    $('cal').innerHTML=`<div class="mgrid">${['T2','T3','T4','T5','T6','T7','CN'].map(x=>`<div class="mh">${x}</div>`).join('')}
+      ${cells.map(d=>{ const ev=dayEvents(d), types=[...new Set(ev.map(e=>e.type))];
+        return `<button type="button" class="mc${d<first||d>last?' out':''}${d===TODAY?' today':''}${d===sel?' sel':''}" data-day="${d}" aria-label="${dm(d)}: ${ev.length} việc">
+          <span class="n">${Number(d.slice(8))}</span><span class="dots">${types.map(t=>`<i class="dot t-${t}"></i>`).join('')}</span>
+          ${ev.slice(0,2).map(e=>`<span class="lbl t-${e.type}" style="color:var(--c)">${esc(e.title)}</span>`).join('')}
+          ${ev.length?`<span class="cnt">${ev.length} việc</span>`:''}</button>`; }).join('')}</div>`;
+    $('cal').querySelectorAll('.mc').forEach(b=>b.onclick=()=>{ sel=b.dataset.day; if(sel<first||sel>last) anchor=sel; draw(); $('detail').scrollIntoView({behavior:'smooth',block:'start'}); });
+    const d=sel&&sel>=first&&sel<=last?sel:null;
+    $('detail').innerHTML=d?`<section class="day"><div class="dh">${DOW[D(d).getDay()]} ${dm(d)}</div>${dayEvents(d).map(evHTML).join('')||'<div class="empty">Không có việc</div>'}</section>`
+      :'<p class="empty">Bấm vào một ngày để xem chi tiết.</p>';
+  }
+}
+document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{ view=b.dataset.view; draw(); });
+$('prev').onclick=()=>{ anchor=view==='week'?addD(anchor,-7):iso(new Date(D(anchor).getFullYear(),D(anchor).getMonth()-1,1)); draw(); };
+$('next').onclick=()=>{ anchor=view==='week'?addD(anchor,7):iso(new Date(D(anchor).getFullYear(),D(anchor).getMonth()+1,1)); draw(); };
+$('today').onclick=()=>{ anchor=TODAY; sel=TODAY; draw(); };
+load().then(draw).catch(e=>{ $('cal').innerHTML=`<p class="err">Lỗi tải dữ liệu: ${esc(e.message)}</p>`; });
+</script>
+</body>
+</html>
