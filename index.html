@@ -361,6 +361,7 @@ input:focus, select:focus, textarea:focus {
     <div class="topbar-name"><span>Sen's</span> Invoice</div>
   </div>
   <div style="display:flex;gap:6px;align-items:center">
+    <a href="khach.html" style="background:none;border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer;text-decoration:none;white-space:nowrap">👥 Guests</a>
     <a href="vi.html" style="background:none;border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 10px;border-radius:6px;font-size:13px;cursor:pointer;text-decoration:none">🇻🇳</a>
     <button onclick="resetForm()" style="background:none;border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer">🔄</button>
   </div>
@@ -392,6 +393,7 @@ input:focus, select:focus, textarea:focus {
     <div class="card-body">
       <div class="field"><label>Guest Name</label>
         <input type="text" id="f-guest" placeholder="e.g. Sarah Johnson" oninput="render()"></div>
+      <div id="f-cust" style="display:none;font-size:12px;margin:-4px 0 8px;color:#7a6656"></div>
       <div class="row2">
         <div class="field"><label>Room</label>
           <input type="text" id="f-room" placeholder="Room 103" oninput="render()"></div>
@@ -629,6 +631,8 @@ let currentCreatedAt = null;
 let saveTimer = null;
 let isApplying = false;
 let loadedDepositPaid = 0;
+let currentCustomerId = null;   // KH-0001 when this invoice belongs to a guest profile (khach.html)
+let sentStatus = 'draft';       // once sent, an invoice stays 'final' so editing it later doesn't drop it from "chờ cọc"
 
 
 function showSync(msg, ms=1200) {
@@ -643,6 +647,7 @@ function newInvoiceId() {
 }
 
 function collectPayload(status='draft') {
+  if (sentStatus==='final') status='final';
   const sub=items.reduce((s,i)=>s+iSum(i),0);
   const dep=parseFloat(document.getElementById('f-deposit').value)||0;
   const invType=document.getElementById('f-inv-type').value;
@@ -666,6 +671,7 @@ function collectPayload(status='draft') {
     balance:  sub-dep,
     invoice_type: invType,
     deposit_pct: invType==='deposit'?depPct:0,
+    customer_id: currentCustomerId||undefined,
   };
 }
 
@@ -674,6 +680,8 @@ function applyPayload(p) {
   const S = v => v==null?'':String(v);
   currentInvoiceId = S(p.id) || newInvoiceId();
   currentCreatedAt = S(p.created_at) || new Date().toISOString();
+  currentCustomerId = S(p.customer_id) || null; drawCustBadge();
+  sentStatus = S(p.status)==='final' ? 'final' : 'draft';
   document.getElementById('f-guest').value    = S(p.guest);
   document.getElementById('f-room').value     = S(p.room);
   document.getElementById('f-checkin').value  = S(p.checkin);
@@ -711,9 +719,11 @@ function scheduleSync(status='draft') {
 function invoiceRow(p) {
   return {id:p.id, status:p.status, lang:p.lang, invoice_type:p.invoice_type||'full', guest:p.guest||'', phone:p.phone||'',
     room:p.room||'', checkin:p.checkin||null, checkout:p.checkout||null,
-    subtotal:Math.round(p.subtotal||0), balance:Math.round(p.balance||0), created_at:p.created_at, data:p};
+    subtotal:Math.round(p.subtotal||0), balance:Math.round(p.balance||0), created_at:p.created_at, data:p,
+    ...(p.customer_id?{customer_id:p.customer_id}:{})};
 }
 async function syncNow(status='draft') {
+  if (status==='final') sentStatus='final';
   if (!currentInvoiceId) currentInvoiceId = newInvoiceId();
   showSync('💾 Saving...', 600);
   try {
@@ -768,8 +778,8 @@ async function loadHistory() {
 async function loadInvoice(id) {
   showSync('⏳ Loading...', 600);
   try {
-    const rows=await sb('invoices?select=data&id=eq.'+encodeURIComponent(id));
-    const d={item: rows[0] && Object.assign({}, rows[0].data, {id})};
+    const rows=await sb('invoices?select=data,customer_id&id=eq.'+encodeURIComponent(id));
+    const d={item: rows[0] && Object.assign({}, rows[0].data, {id}, rows[0].customer_id?{customer_id:rows[0].customer_id}:{})};
     if (d.item) {
       applyPayload(d.item);
       switchTab('form');
@@ -1147,6 +1157,11 @@ function setLoad(v){document.getElementById('loading').classList.toggle('show',v
 
 function resetForm(){
   if(!confirm('Reset everything?'))return;
+  blankForm();
+}
+// a fresh invoice without asking; ?kh= starts here too
+function blankForm(){
+  currentCustomerId = null; drawCustBadge(); sentStatus = 'draft';
   currentInvoiceId = newInvoiceId();
   currentCreatedAt = new Date().toISOString();
   items=[];idc=0;
@@ -1162,7 +1177,34 @@ function resetForm(){
   drawForms();render();
 }
 
+// ── guest profiles (khach.html) ──
+function drawCustBadge() {
+  const el=document.getElementById('f-cust'); if(!el) return;
+  if(!currentCustomerId){ el.style.display='none'; el.innerHTML=''; return; }
+  el.style.display='block';
+  el.innerHTML='👤 Linked to guest profile <a href="khach.html#'+encodeURIComponent(currentCustomerId)+'">'+currentCustomerId+'</a> · <a href="#" onclick="unlinkCust(event)">unlink</a>';
+}
+function unlinkCust(e) { e.preventDefault(); currentCustomerId=null; drawCustBadge(); saveLocal(); }
+// ?kh=KH-0001 → new invoice for that guest · ?open=<id> → reopen an invoice (links from khach.html)
+async function openFromUrl() {
+  const q=new URLSearchParams(location.search), kh=q.get('kh'), open=q.get('open');
+  if(!kh && !open) return;
+  history.replaceState(null,'',location.pathname);
+  if(open){ await loadInvoice(open); return; }
+  showSync('⏳ Opening guest...', 1500);
+  try {
+    const rows=await sb('customers?select=id,name,phone&id=eq.'+encodeURIComponent(kh));
+    if(!rows.length){ alert('Guest not found: '+kh); return; }
+    blankForm();
+    currentCustomerId=rows[0].id; drawCustBadge();
+    document.getElementById('f-guest').value=rows[0].name||'';
+    const ph=document.getElementById('f-phone'); if(ph) ph.value=rows[0].phone||'';
+    render(); saveLocal(); syncNow();
+  } catch(e) { alert(e.message); }
+}
+
 init();
+openFromUrl();
 </script>
 </body>
 </html>

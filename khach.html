@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sen's Khách hàng</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Lora:wght@600;700&display=swap">
+<script src="sb.js"></script>
+<style>
+/* Hồ sơ khách: mỗi khách một mã KH, các hóa đơn (phòng/xe + combo) và từng lần thu tiền.
+   Cùng bảng màu với combo.html. */
+:root{
+  --bg:#f6efe8; --paper:#fffdfa; --ink:#2b1d14; --muted:#7a6656; --line:#e6d6c6;
+  --accent:#b8612a; --accent-ink:#fff; --soft:#f3e2d3; --field:#fff; --bad:#b3261e; --good:#2e7d32;
+  --display:"Lora",Georgia,serif; --body:"Be Vietnam Pro",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1c1511; --paper:#271d17; --ink:#f2e6db; --muted:#b39c89; --line:#3e3027;
+  --accent:#e08a4f; --accent-ink:#1c1511; --soft:#3a2a20; --field:#211913; --bad:#ff8a80; --good:#81c784; color-scheme:dark}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:10px max(16px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left));
+  padding-top:max(10px,env(safe-area-inset-top));background:var(--accent);color:var(--accent-ink)}
+.top h1{flex:1;margin:0;font-family:var(--display);font-size:1.15rem;line-height:1.2;min-width:120px}
+.top a{color:inherit;text-decoration:none;font:600 13px var(--body);border:1px solid currentColor;border-radius:8px;padding:6px 10px;white-space:nowrap}
+.wrap{max-width:760px;margin:0 auto;padding:14px max(16px,env(safe-area-inset-right)) 60px max(16px,env(safe-area-inset-left))}
+.tabs{display:flex;gap:8px;margin-bottom:14px}
+.tabs button{flex:1;font:600 14px var(--body);padding:10px;border-radius:9px;border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer}
+.tabs button.on{background:var(--soft);border-color:var(--accent)}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+label{display:flex;flex-direction:column;gap:4px;font-size:.82rem;color:var(--muted);font-weight:500;min-width:0}
+input,select,textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--field);border:1px solid var(--line);
+  border-radius:7px;padding:9px 10px;min-width:0;width:100%}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+.btn{font:600 14px var(--body);border-radius:9px;padding:9px 12px;cursor:pointer;border:1px solid var(--accent);white-space:nowrap;text-decoration:none;display:inline-block}
+.primary{background:var(--accent);color:var(--accent-ink)}
+.ghost{background:var(--paper);color:var(--accent)}
+.small{font-size:12.5px;padding:6px 10px}
+.danger{color:var(--bad);border-color:var(--bad);background:var(--paper)}
+button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.hint{font-size:.8rem;color:var(--muted);margin:4px 0 0}
+.err{color:var(--bad)}
+h2{font-family:var(--display);font-size:1.1rem;margin:16px 0 8px}
+.cust{display:grid;grid-template-columns:1fr auto;gap:0 10px;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.cust b{font-weight:600} .cust .m{font-size:.82rem;color:var(--muted)} .cust .r{text-align:right}
+.chip{display:inline-block;font-size:.75rem;font-weight:600;border-radius:999px;padding:2px 9px;border:1px solid}
+.s-draft{color:var(--muted);border-color:var(--line)}
+.s-sent{color:#b26a00;border-color:#e0a54a;background:#fff4e0}
+.s-deposited{color:#1d5fa8;border-color:#7fb0e6;background:#eaf3fd}
+.s-paid{color:var(--good);border-color:#8fc79a;background:#eaf6ec}
+.s-cancelled{color:var(--bad);border-color:#e6a19c;background:#fdeceb;text-decoration:line-through}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .chip{background:transparent}}
+.money{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0;font-size:.85rem}
+.money div{background:var(--soft);border-radius:7px;padding:6px 8px;min-width:0}
+.money b{display:block;font-size:.88rem;white-space:nowrap}
+.pay{display:flex;justify-content:space-between;gap:8px;font-size:.85rem;border-top:1px dashed var(--line);padding:6px 0}
+.pay .x{background:none;border:0;color:var(--bad);cursor:pointer;font-size:.8rem}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:7;
+  background:var(--ink);color:var(--paper);border-radius:999px;padding:8px 16px;font-size:.88rem;opacity:0;pointer-events:none;
+  transition:opacity .2s;max-width:calc(100vw - 32px);text-align:center}
+.toast.show{opacity:1}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Sen's Khách hàng</h1>
+  <a href="vi.html">🧾 Hóa đơn</a>
+  <a href="combo.html">🗺 Combo</a>
+</header>
+
+<main class="wrap">
+  <div class="tabs" role="tablist">
+    <button type="button" id="tabCust" class="on">👥 Khách</button>
+    <button type="button" id="tabFollow">📌 Cần theo dõi</button>
+  </div>
+
+  <!-- ── danh sách khách ── -->
+  <section id="vList">
+    <div class="row" style="margin-bottom:10px">
+      <input id="q" type="search" placeholder="Tìm tên, số điện thoại hoặc mã KH" style="flex:1" autocomplete="off">
+      <button type="button" class="btn primary" id="addOpen">➕ Thêm khách</button>
+    </div>
+    <form id="addForm" class="card" hidden>
+      <div class="grid">
+        <label>Tên khách<input id="aName" autocomplete="off"></label>
+        <label>Số điện thoại<input id="aPhone" inputmode="tel" autocomplete="off"></label>
+      </div>
+      <label style="margin-top:10px">Ghi chú<input id="aNote" placeholder="Ví dụ: khách quen, đi 4 người, thích phòng view sông"></label>
+      <p class="hint">Không ghi số CCCD, hộ chiếu hay giấy tờ tùy thân vào đây.</p>
+      <div class="row" style="margin-top:10px">
+        <button type="submit" class="btn primary">Lưu khách</button>
+        <button type="button" class="btn ghost" id="addCancel">Hủy</button>
+        <span id="addErr" class="err"></span>
+      </div>
+    </form>
+    <div id="custList"><p class="hint">⏳ Đang tải…</p></div>
+  </section>
+
+  <!-- ── hồ sơ một khách ── -->
+  <section id="vProfile" hidden>
+    <button type="button" class="btn ghost small" id="back">← Danh sách khách</button>
+    <div id="profile"></div>
+  </section>
+
+  <!-- ── cần theo dõi ── -->
+  <section id="vFollow" hidden>
+    <div id="follow"><p class="hint">⏳ Đang tải…</p></div>
+  </section>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>Math.round(n||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.')+' đ';
+const fmtD=v=>{if(!v)return'';const[y,m,d]=String(v).slice(0,10).split('-');return`${d}/${m}/${y}`;};
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+// same rule as norm_phone() in the database
+const normPhone=p=>{const d=String(p||'').replace(/\D/g,'');return /^84\d{9}$/.test(d)?'0'+d.slice(2):d;};
+const STATE={draft:'Nháp',sent:'Chờ cọc',deposited:'Đã cọc',paid:'Đã thanh toán',cancelled:'Đã hủy'};
+const chip=s=>`<span class="chip s-${esc(s)}">${esc(STATE[s]||s)}</span>`;
+const billName=b=>b.kind==='combo'?'Combo '+b.ref:'Hóa đơn '+(b.detail?'phòng '+b.detail:'phòng/xe');
+const editorUrl=b=>(b.kind==='combo'?'combo.html':'vi.html')+'?open='+encodeURIComponent(b.ref);
+const table=b=>b.kind==='combo'?'combos?code=eq.':'invoices?id=eq.';
+let toastT=null;
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2800);}
+function errText(e){return /does not exist|schema cache|Could not find/i.test(e.message)
+  ?'Database chưa được nâng cấp: chạy file supabase/002_khach_thu_tien.sql trên Supabase trước.':e.message;}
+
+// ── điều hướng: #KH-0001 mở hồ sơ, #follow mở tab theo dõi ──
+function show(view){
+  $('vList').hidden=view!=='list'; $('vProfile').hidden=view!=='profile'; $('vFollow').hidden=view!=='follow';
+  $('tabCust').classList.toggle('on',view!=='follow'); $('tabFollow').classList.toggle('on',view==='follow');
+}
+function route(){
+  const h=decodeURIComponent(location.hash.slice(1));
+  if(/^KH-\d+$/.test(h)){ show('profile'); loadProfile(h); }
+  else if(h==='follow'){ show('follow'); loadFollow(); }
+  else { show('list'); loadList(); }
+}
+window.addEventListener('hashchange',route);
+$('tabCust').onclick=()=>{ location.hash=''; };
+$('tabFollow').onclick=()=>{ location.hash='follow'; };
+$('back').onclick=()=>{ location.hash=''; };
+
+// ── danh sách + tìm kiếm ──
+let qT=null;
+$('q').addEventListener('input',()=>{clearTimeout(qT);qT=setTimeout(loadList,300);});
+async function loadList(){
+  const box=$('custList'), q=$('q').value.trim();
+  let filter='';
+  if(q){
+    const parts=[`name.ilike.*${q.replace(/[*,()]/g,' ')}*`,`id.ilike.*${q.replace(/[*,()]/g,' ')}*`];
+    const d=normPhone(q); if(d.length>=3) parts.push(`phone_norm.like.*${d}*`);
+    filter='&or=('+parts.map(encodeURIComponent).join(',')+')';
+  }
+  try{
+    const rows=await sb('customers?select=id,name,phone,note&deleted_at=is.null&order=updated_at.desc&limit=100'+filter);
+    if(!rows.length){ box.innerHTML=`<p class="hint">${q?'Không tìm thấy khách nào.':'Chưa có khách nào. Bấm ➕ Thêm khách.'}</p>`; return; }
+    box.innerHTML=rows.map(c=>`<a class="card cust" href="#${esc(c.id)}" style="display:grid;text-decoration:none">
+      <b>${esc(c.name||'(chưa có tên)')}</b><span class="r m">${esc(c.id)}</span>
+      <span class="m">${esc(c.phone||'chưa có số')}</span><span class="r m">${esc(c.note).slice(0,40)}</span></a>`).join('');
+  }catch(e){ box.innerHTML=`<p class="err">${esc(errText(e))}</p>`; }
+}
+
+// ── thêm khách ──
+$('addOpen').onclick=()=>{ $('addForm').hidden=false; $('aName').value=$('q').value.replace(/[\d+ .-]{6,}/,'').trim();
+  const d=normPhone($('q').value); $('aPhone').value=d.length>=9?d:''; $('addErr').textContent=''; $('aName').focus(); };
+$('addCancel').onclick=()=>{ $('addForm').hidden=true; };
+$('addForm').onsubmit=async e=>{
+  e.preventDefault(); $('addErr').textContent='';
+  const name=$('aName').value.trim(), phone=$('aPhone').value.trim();
+  if(!name&&!phone){ $('addErr').textContent='Nhập tên hoặc số điện thoại.'; return; }
+  try{
+    const r=await sb('rpc/add_customer',{method:'POST',body:{p_name:name,p_phone:phone,p_note:$('aNote').value.trim()}});
+    $('addForm').hidden=true; $('aName').value=$('aPhone').value=$('aNote').value='';
+    toast(r.existed?`Số này đã có: ${r.id} · ${r.name}`:`Đã thêm ${r.id}`);
+    location.hash=r.id;
+  }catch(err){ $('addErr').textContent=errText(err); }
+};
+
+// ── hồ sơ khách ──
+let cur=null;   // {c, bills, pays}
+async function loadProfile(id){
+  const box=$('profile'); box.innerHTML='<p class="hint">⏳ Đang tải…</p>';
+  try{
+    const [cs,bills,pays]=await Promise.all([
+      sb('customers?select=*&id=eq.'+encodeURIComponent(id)),
+      sb('bills?select=*&customer_id=eq.'+encodeURIComponent(id)+'&order=updated_at.desc'),
+      sb('payments?select=*&customer_id=eq.'+encodeURIComponent(id)+'&deleted_at=is.null&order=paid_on.asc,created_at.asc')]);
+    if(!cs.length){ box.innerHTML='<p class="err">Không tìm thấy khách '+esc(id)+'.</p>'; return; }
+    cur={c:cs[0],bills,pays}; drawProfile(); loadUnlinked();
+  }catch(e){ box.innerHTML=`<p class="err">${esc(errText(e))}</p>`; }
+}
+function drawProfile(){
+  const {c,bills,pays}=cur, live=bills.filter(b=>b.state!=='cancelled');
+  const tot=live.reduce((s,b)=>s+Number(b.total||0),0), paid=live.reduce((s,b)=>s+Number(b.paid||0),0);
+  $('profile').innerHTML=`
+  <div class="card" style="margin-top:10px">
+    <div id="pView">
+      <div class="row" style="justify-content:space-between"><h2 style="margin:0">${esc(c.name||'(chưa có tên)')}</h2><b>${esc(c.id)}</b></div>
+      <div class="row" style="margin-top:4px">${c.phone?`<a href="tel:${esc(normPhone(c.phone))}">📞 ${esc(c.phone)}</a>`:'<span class="hint">Chưa có số điện thoại</span>'}
+        <button type="button" class="btn ghost small" id="pEdit" style="margin-left:auto">✏️ Sửa</button></div>
+      ${c.note?`<p class="hint">${esc(c.note)}</p>`:''}
+    </div>
+    <form id="pForm" hidden>
+      <div class="grid"><label>Tên khách<input id="eName" value="${esc(c.name)}"></label>
+        <label>Số điện thoại<input id="ePhone" inputmode="tel" value="${esc(c.phone)}"></label></div>
+      <label style="margin-top:10px">Ghi chú<input id="eNote" value="${esc(c.note)}"></label>
+      <p class="hint">Không ghi số CCCD, hộ chiếu hay giấy tờ tùy thân vào đây.</p>
+      <div class="row" style="margin-top:10px"><button class="btn primary small">Lưu</button>
+        <button type="button" class="btn ghost small" id="eCancel">Hủy</button><span id="eErr" class="err"></span></div>
+    </form>
+    <div class="money"><div>Tổng hóa đơn<b>${money(tot)}</b></div><div>Đã thu<b>${money(paid)}</b></div><div>Còn lại<b>${money(tot-paid)}</b></div></div>
+    <div class="row">
+      <a class="btn primary small" href="vi.html?kh=${encodeURIComponent(c.id)}">🧾 Hóa đơn phòng/xe mới</a>
+      <a class="btn primary small" href="combo.html?kh=${encodeURIComponent(c.id)}">🗺 Combo mới</a>
+    </div>
+  </div>
+  <h2>Hóa đơn (${bills.length})</h2>
+  ${bills.length?bills.map((b,i)=>billCard(b,i,pays)).join(''):'<p class="hint">Khách này chưa có hóa đơn. Bấm một nút ở trên để tạo.</p>'}
+  <div id="unlinked"></div>`;
+  $('pEdit').onclick=()=>{ $('pView').hidden=true; $('pForm').hidden=false; };
+  $('eCancel').onclick=()=>{ $('pView').hidden=false; $('pForm').hidden=true; };
+  $('pForm').onsubmit=saveCustomer;
+  $('profile').querySelectorAll('[data-act]').forEach(el=>el.onclick=onBillAction);
+}
+function billCard(b,i,pays){
+  const ps=pays.filter(p=>(b.kind==='combo'?p.combo_code:p.invoice_id)===b.ref);
+  return `<div class="card">
+    <div class="row" style="justify-content:space-between"><b>${esc(billName(b))}</b>${chip(b.state)}</div>
+    <div class="hint">${b.kind==='combo'?'Đi':'Nhận phòng'} ${esc(fmtD(b.start_date))||'—'} · ${esc(b.guest||'')}</div>
+    <div class="money"><div>Tổng<b>${money(b.total)}</b></div><div>Đã thu<b>${money(b.paid)}</b></div><div>Còn lại<b>${money(b.remaining)}</b></div></div>
+    ${ps.map(p=>`<div class="pay"><span>${esc(fmtD(p.paid_on))} · ${p.amount<0?'Hoàn ':''}${money(Math.abs(p.amount))}${p.account?' · '+esc(p.account):''}${p.note?' · '+esc(p.note):''}</span>
+      <button type="button" class="x" data-act="unpay" data-p="${esc(p.id)}">Xoá</button></div>`).join('')}
+    <form class="card" data-payform="${i}" hidden style="margin:8px 0 0;background:var(--soft)">
+      <div class="grid">
+        <label>Số tiền<input name="amount" inputmode="numeric" value="${b.remaining>0?Math.round(b.remaining):''}"></label>
+        <label>Ngày nhận<input name="paid_on" type="date" value="${today()}"></label>
+        <label>Nhận qua<input name="account" list="accts" placeholder="Chuyển khoản / tiền mặt"></label>
+        <label>Ghi chú<input name="note" placeholder="Ví dụ: cọc 50%"></label>
+      </div>
+      <label class="row" style="flex-direction:row;margin-top:8px;color:var(--ink)"><input type="checkbox" name="refund" style="width:auto"> Đây là tiền hoàn lại cho khách</label>
+      <div class="row" style="margin-top:8px"><button class="btn primary small">Lưu khoản thu</button><span class="err" data-payerr></span></div>
+    </form>
+    <div class="row" style="margin-top:8px">
+      <a class="btn ghost small" href="${editorUrl(b)}">Mở hóa đơn</a>
+      ${b.state!=='cancelled'?`<button type="button" class="btn primary small" data-act="pay" data-i="${i}">💵 Ghi thu tiền</button>`:''}
+      ${b.state==='draft'?`<button type="button" class="btn ghost small" data-act="sent" data-i="${i}">Đã gửi khách</button>`:''}
+      ${b.state==='cancelled'?`<button type="button" class="btn ghost small" data-act="uncancel" data-i="${i}">Khôi phục</button>`
+        :`<button type="button" class="btn danger small" data-act="cancel" data-i="${i}">Hủy</button>`}
+    </div></div>`;
+}
+async function onBillAction(e){
+  const el=e.currentTarget, act=el.dataset.act, b=cur.bills[el.dataset.i];
+  try{
+    if(act==='pay'){ const f=document.querySelector(`[data-payform="${el.dataset.i}"]`); f.hidden=!f.hidden; f.onsubmit=ev=>savePay(ev,b); if(!f.hidden) f.amount.focus(); return; }
+    if(act==='sent') await sb(table(b)+encodeURIComponent(b.ref),{method:'PATCH',prefer:'return=minimal',body:{status:'final'}});
+    if(act==='cancel'){ if(!confirm('Hủy '+billName(b)+'? Có thể khôi phục lại sau.')) return;
+      await sb(table(b)+encodeURIComponent(b.ref),{method:'PATCH',prefer:'return=minimal',body:{cancelled_at:new Date().toISOString()}}); }
+    if(act==='uncancel') await sb(table(b)+encodeURIComponent(b.ref),{method:'PATCH',prefer:'return=minimal',body:{cancelled_at:null}});
+    if(act==='unpay'){ if(!confirm('Xoá khoản thu này? (dùng khi ghi nhầm)')) return;
+      await sb('payments?id=eq.'+encodeURIComponent(el.dataset.p),{method:'PATCH',prefer:'return=minimal',body:{deleted_at:new Date().toISOString()}}); }
+    loadProfile(cur.c.id);
+  }catch(err){ toast('Lỗi: '+errText(err)); }
+}
+async function savePay(ev,b){
+  ev.preventDefault(); const f=ev.target, out=f.querySelector('[data-payerr]');
+  let amt=parseInt(String(f.amount.value).replace(/\D/g,''),10)||0;
+  if(!amt){ out.textContent='Nhập số tiền.'; return; }
+  if(f.refund.checked) amt=-amt;
+  try{
+    await sb('payments',{method:'POST',prefer:'return=minimal',body:{customer_id:cur.c.id,
+      invoice_id:b.kind==='invoice'?b.ref:null, combo_code:b.kind==='combo'?b.ref:null,
+      amount:amt, paid_on:f.paid_on.value||today(), account:f.account.value.trim(), note:f.note.value.trim()}});
+    toast('Đã ghi '+money(Math.abs(amt))); loadProfile(cur.c.id);
+  }catch(err){ out.textContent=errText(err); }
+}
+async function saveCustomer(e){
+  e.preventDefault();
+  const body={name:$('eName').value.trim(),phone:$('ePhone').value.trim(),note:$('eNote').value.trim()};
+  try{ await sb('customers?id=eq.'+encodeURIComponent(cur.c.id),{method:'PATCH',prefer:'return=minimal',body}); toast('Đã lưu'); loadProfile(cur.c.id); }
+  catch(err){ $('eErr').textContent=/duplicate|unique/i.test(err.message)?'Số điện thoại này đã thuộc về khách khác.':errText(err); }
+}
+// hóa đơn cũ chưa gắn khách nhưng cùng số điện thoại hoặc cùng tên → gợi ý gắn
+async function loadUnlinked(){
+  const {c}=cur, ph=normPhone(c.phone), nm=(c.name||'').trim().toLowerCase();
+  if(!ph&&!nm) return;
+  try{
+    const rows=await sb('bills?select=*&customer_id=is.null&order=updated_at.desc&limit=300');
+    const hits=rows.filter(b=>(ph&&normPhone(b.phone)===ph)||(nm&&(b.guest||'').trim().toLowerCase()===nm));
+    if(!hits.length) return;
+    $('unlinked').innerHTML=`<h2>Hóa đơn cũ có thể của khách này</h2><p class="hint">Trùng số điện thoại hoặc tên, nhưng chưa gắn mã khách.</p>`+
+      hits.map((b,i)=>`<div class="card row" style="justify-content:space-between"><span><b>${esc(billName(b))}</b><br><span class="hint">${esc(b.guest)} · ${esc(b.phone)} · ${money(b.total)}</span></span>
+      <button type="button" class="btn ghost small" data-link="${i}">Gắn vào ${esc(c.id)}</button></div>`).join('');
+    $('unlinked').querySelectorAll('[data-link]').forEach(el=>el.onclick=async()=>{
+      const b=hits[el.dataset.link];
+      try{ await sb(table(b)+encodeURIComponent(b.ref),{method:'PATCH',prefer:'return=minimal',body:{customer_id:c.id}}); toast('Đã gắn'); loadProfile(c.id); }
+      catch(err){ toast('Lỗi: '+errText(err)); }
+    });
+  }catch(e){}
+}
+
+// ── cần theo dõi: chờ cọc, đã cọc còn thu, nháp gần đây ──
+async function loadFollow(){
+  const box=$('follow'); box.innerHTML='<p class="hint">⏳ Đang tải…</p>';
+  try{
+    const rows=await sb('bills?select=*&state=in.(sent,deposited,draft)&order=start_date.asc.nullslast&limit=300');
+    const ids=[...new Set(rows.map(r=>r.customer_id).filter(Boolean))];
+    const names={};
+    if(ids.length) (await sb('customers?select=id,name&id=in.('+ids.map(encodeURIComponent).join(',')+')')).forEach(c=>names[c.id]=c.name);
+    const group=(st,title,hint)=>{ const g=rows.filter(r=>r.state===st&&(st!=='draft'||Number(r.total)>0)); if(!g.length) return '';
+      return `<h2>${title} (${g.length})</h2><p class="hint">${hint}</p>`+g.map(b=>`<a class="card cust" style="display:grid;text-decoration:none"
+        href="${b.customer_id?'#'+esc(b.customer_id):editorUrl(b)}">
+        <b>${esc(names[b.customer_id]||b.guest||'(chưa có tên)')}</b><span class="r">${chip(b.state)}</span>
+        <span class="m">${esc(billName(b))}${b.start_date?' · '+esc(fmtD(b.start_date)):''}</span>
+        <span class="r m">còn ${money(b.remaining)}</span>
+        ${b.customer_id?'':'<span class="m err" style="grid-column:1/-1">Chưa gắn mã khách</span>'}</a>`).join(''); };
+    box.innerHTML=(group('sent','⏳ Chờ cọc','Đã gửi hóa đơn, chưa nhận đồng nào — nhắn lại khách.')+
+      group('deposited','💰 Đã cọc, còn phải thu','Thu nốt khi khách đến hoặc trước ngày đi.')+
+      group('draft','📝 Nháp','Hóa đơn chưa gửi khách.'))||'<p class="hint">Không có hóa đơn nào cần theo dõi. 🎉</p>';
+  }catch(e){ box.innerHTML=`<p class="err">${esc(errText(e))}</p>`; }
+}
+document.body.insertAdjacentHTML('beforeend','<datalist id="accts"><option value="Chuyển khoản"><option value="Tiền mặt"></datalist>');
+route();
+</script>
+</body>
+</html>
