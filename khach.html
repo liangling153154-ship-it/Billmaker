@@ -205,7 +205,8 @@ function drawProfile(){
     <div id="pView">
       <div class="row" style="justify-content:space-between"><h2 style="margin:0">${esc(c.name||'(chưa có tên)')}</h2><b>${esc(c.id)}</b></div>
       <div class="row" style="margin-top:4px">${c.phone?`<a href="tel:${esc(normPhone(c.phone))}">📞 ${esc(c.phone)}</a>`:'<span class="hint">Chưa có số điện thoại</span>'}
-        <button type="button" class="btn ghost small" id="pEdit" style="margin-left:auto">✏️ Sửa</button></div>
+        <button type="button" class="btn ghost small" id="pEdit" style="margin-left:auto">✏️ Sửa</button>
+        <button type="button" class="btn danger small" id="pDel">🗑 Xoá khách</button></div>
       ${c.note?`<p class="hint">${esc(c.note)}</p>`:''}
     </div>
     <form id="pForm" hidden>
@@ -229,6 +230,7 @@ function drawProfile(){
   $('pEdit').onclick=()=>{ $('pView').hidden=true; $('pForm').hidden=false; };
   $('eCancel').onclick=()=>{ $('pView').hidden=false; $('pForm').hidden=true; };
   $('pForm').onsubmit=saveCustomer;
+  $('pDel').onclick=deleteCustomer;
   $('profile').querySelectorAll('[data-act]').forEach(el=>el.onclick=onBillAction);
 }
 function billCard(b,i,pays){
@@ -282,6 +284,18 @@ async function savePay(ev,b){
     toast('Đã ghi '+money(Math.abs(amt))); loadProfile(cur.c.id);
   }catch(err){ out.textContent=errText(err); }
 }
+// "Xoá" chỉ ẩn (deleted_at), giống hóa đơn: khôi phục được trong Supabase
+async function deleteCustomer(){
+  const {c,bills}=cur, n=bills.length;
+  if(!confirm(`Xoá khách ${c.id} · ${c.name||''}?`+(n?`\nCả ${n} hóa đơn và các khoản thu của khách cũng bị ẩn khỏi app.`:'')+'\n(Vẫn khôi phục được trong Supabase.)')) return;
+  const now={deleted_at:new Date().toISOString()};
+  try{
+    for(const b of bills) await sb(table(b)+encodeURIComponent(b.ref),{method:'PATCH',prefer:'return=minimal',body:now});
+    await sb('payments?customer_id=eq.'+encodeURIComponent(c.id)+'&deleted_at=is.null',{method:'PATCH',prefer:'return=minimal',body:now});
+    await sb('customers?id=eq.'+encodeURIComponent(c.id),{method:'PATCH',prefer:'return=minimal',body:now});
+    toast('Đã xoá '+c.id); location.hash='';
+  }catch(err){ toast('Lỗi: '+errText(err)); }
+}
 async function saveCustomer(e){
   e.preventDefault();
   const body={name:$('eName').value.trim(),phone:$('ePhone').value.trim(),note:$('eNote').value.trim()};
@@ -318,15 +332,21 @@ async function loadFollow(){
     const names={};
     if(ids.length) (await sb('customers?select=id,name&id=in.('+ids.map(encodeURIComponent).join(',')+')')).forEach(c=>names[c.id]=c.name);
     const group=(st,title,hint)=>{ const g=st==='soon'?soon:rows.filter(r=>r.state===st&&(st!=='draft'||Number(r.total)>0)); if(!g.length) return '';
-      return `<h2>${title} (${g.length})</h2><p class="hint">${hint}</p>`+g.map(b=>`<a class="card cust" style="display:grid;text-decoration:none"
+      return `<h2>${title} (${g.length})</h2><p class="hint">${hint}</p>`+g.map(b=>`<div class="card" style="padding:0;display:flex;align-items:stretch"><a class="cust" style="display:grid;text-decoration:none;flex:1;padding:12px 14px"
         href="${b.customer_id?'#'+esc(b.customer_id):editorUrl(b)}">
         <b>${esc(names[b.customer_id]||b.guest||'(chưa có tên)')}</b><span class="r">${chip(b.state)}</span>
         <span class="m">${esc(billName(b))}${b.start_date?' · '+esc(fmtD(b.start_date)):''}</span>
         <span class="r m">còn ${money(b.remaining)}</span>
-        ${b.customer_id?'':'<span class="m err" style="grid-column:1/-1">Chưa gắn mã khách</span>'}</a>`).join(''); };
+        ${b.customer_id?'':'<span class="m err" style="grid-column:1/-1">Chưa gắn mã khách</span>'}</a>
+        <button type="button" class="x-del" data-kind="${b.kind}" data-ref="${esc(b.ref)}" data-name="${esc(billName(b))}" aria-label="Xoá ${esc(billName(b))}" style="border:0;border-left:1px solid var(--line);background:none;color:var(--bad);padding:0 14px;cursor:pointer;font:600 13px var(--body)">Xoá</button></div>`).join(''); };
     box.innerHTML=(group('soon','🚌 Sắp đến (7 ngày tới)','Chuẩn bị phòng, đón xe, nhắc khách mang theo phần tiền còn lại.')+group('sent','⏳ Chờ cọc','Đã gửi hóa đơn, chưa nhận đồng nào — nhắn lại khách.')+
       group('deposited','💰 Đã cọc, còn phải thu','Thu nốt khi khách đến hoặc trước ngày đi.')+
       group('draft','📝 Nháp','Hóa đơn chưa gửi khách.'))||'<p class="hint">Không có hóa đơn nào cần theo dõi. 🎉</p>';
+    box.querySelectorAll('.x-del').forEach(el=>el.onclick=async()=>{
+      if(!confirm('Xoá '+el.dataset.name+' khỏi danh sách?\n(Hóa đơn bị ẩn khỏi app, vẫn khôi phục được trong Supabase.)')) return;
+      try{ await sb(table({kind:el.dataset.kind})+encodeURIComponent(el.dataset.ref),{method:'PATCH',prefer:'return=minimal',body:{deleted_at:new Date().toISOString()}}); toast('Đã xoá'); loadFollow(); }
+      catch(err){ toast('Lỗi: '+errText(err)); }
+    });
   }catch(e){ box.innerHTML=`<p class="err">${esc(errText(e))}</p>`; }
 }
 document.body.insertAdjacentHTML('beforeend','<datalist id="accts"><option value="Chuyển khoản"><option value="Tiền mặt"></datalist>');
