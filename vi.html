@@ -378,6 +378,32 @@ input:focus, select:focus, textarea:focus {
   display: flex; justify-content: space-between;
 }
 .sline { display: block; line-height: 1.6; }
+/* ── khách Việt: nâu cam Sen's cho giao diện làm việc. Chỉ đổi phần nhập liệu,
+      ảnh hóa đơn gửi khách (.inv-*) giữ nguyên màu cũ. ── */
+body { background: #f6efe8; }
+.topbar { background: #a9541f; }
+.topbar-icon { background: #fff; }
+.topbar-icon svg { fill: #a9541f; }
+.topbar-name span { color: #ffe2c2; }
+.tabs { background: #fffdfa; border-bottom-color: #e6d6c6; }
+.tab.active { color: #7e3c14; border-bottom-color: #a9541f; }
+.card { background: #fffdfa; }
+.card-head { background: #a9541f; }
+.summary-bar { background: #7e3c14; }
+.s-val { color: #ffe2c2; }
+.preset-group { border-color: #e6d6c6; }
+.preset-group-head { background: #f8ede3; color: #7e3c14; }
+.chip { background: #fbf1e7; border-color: #e3c3a6; color: #7e3c14; }
+.chip:active { background: #a9541f; border-color: #a9541f; color: #fff; }
+.item-card { border-color: #eadccd; }
+.item-head { background: #fbf1e7; }
+.item-label { color: #7e3c14; }
+.item-subtotal { color: #a9541f; }
+.add-item-btn { border-color: #a9541f; color: #a9541f; }
+input:focus, select:focus, textarea:focus { border-color: #a9541f; }
+.a-primary { background: #a9541f; }
+.a-gold { background: #7e3c14; }
+.a-ghost { background: #f3e2d3; color: #7e3c14; }
 </style>
 </head>
 <body>
@@ -392,9 +418,7 @@ input:focus, select:focus, textarea:focus {
     <div class="topbar-name"><span>Sen's</span> Hóa Đơn</div>
   </div>
   <div style="display:flex;gap:6px;align-items:center">
-    <a href="khach.html" style="background:none;border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer;text-decoration:none;white-space:nowrap">👥 Khách</a>
-    <a href="combo.html" style="background:none;border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer;text-decoration:none;white-space:nowrap">🗺 Combo</a>
-    <a href="index.html" style="background:none;border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 10px;border-radius:6px;font-size:13px;cursor:pointer;text-decoration:none">🇬🇧</a>
+    <a href="index.html" style="background:none;border:1px solid rgba(255,255,255,.4);color:#fff;padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer;text-decoration:none;white-space:nowrap">☰ Menu</a>
     <button onclick="resetForm()" style="background:none;border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer">🔄</button>
   </div>
 </div>
@@ -851,6 +875,7 @@ async function loadInvoice(id) {
   showSync('⏳ Đang tải...', 600);
   try {
     const rows=await sb('invoices?select=data,customer_id&id=eq.'+encodeURIComponent(id));
+    if (rows[0] && rows[0].data && rows[0].data.lang==='en') { location.replace('en.html?open='+encodeURIComponent(id)); return; }
     const d={item: rows[0] && Object.assign({}, rows[0].data, {id}, rows[0].customer_id?{customer_id:rows[0].customer_id}:{})};
     if (d.item) {
       applyPayload(d.item);
