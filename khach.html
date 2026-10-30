@@ -177,10 +177,12 @@ $('back').onclick=()=>{ location.hash=''; };
 // ── trạng thái khách (tự tính từ hóa đơn + ngày đến/đi) và nhóm khách (chọn tay) ──
 const KSTATE={pending:'Chưa chốt',deposit:'Đã cọc',soon:'Đã cọc, sắp tới',serving:'Đang phục vụ',done:'Đã hoàn thành',cancelled:'Đã hủy'};
 const SEGS={combo:'Combo',xe_may:'Chỉ thuê xe máy',phong_xe:'Thuê phòng và xe máy'};
+// "Đã cọc, sắp tới": báo trước khi khách đến
+const SOON_DAYS=5;
 const addDaysIso=(n)=>{const d=new Date();d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
 // one stage per bill, then the guest takes the most pressing one
 function custStatus(bills){
-  const t=today(), soon=addDaysIso(3), rank=['serving','soon','deposit','pending','done'];
+  const t=today(), soon=addDaysIso(SOON_DAYS), rank=['serving','soon','deposit','pending','done'];
   const live=bills.filter(b=>b.state!=='cancelled');
   if(!live.length) return bills.length?'cancelled':'pending';
   const stages=live.map(b=>{

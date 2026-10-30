@@ -57,7 +57,7 @@ nav.list .t span{font-size:12.5px;color:var(--muted)}
     <div class="stats">
       <a class="stat" href="khach.html#follow"><b id="nSent" style="color:#9a5a00">–</b><span>Chờ cọc</span></a>
       <a class="stat" href="khach.html#follow"><b id="nDep" style="color:#1d5fa8">–</b><span>Đã cọc, còn thu</span></a>
-      <a class="stat" href="khach.html#follow"><b id="nSoon">–</b><span>Đến trong 3 ngày</span></a>
+      <a class="stat" href="khach.html#follow"><b id="nSoon">–</b><span>Đến trong 5 ngày</span></a>
     </div>
     <p class="err" id="err" hidden></p>
   </section>
@@ -103,7 +103,7 @@ nav.list .t span{font-size:12.5px;color:var(--muted)}
 </div>
 <script>
 const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-const now=new Date(), in3=new Date(); in3.setDate(in3.getDate()+3);
+const now=new Date(), in3=new Date(); in3.setDate(in3.getDate()+5);   // báo trước 5 ngày, khớp "Đã cọc, sắp tới" ở khach.html
 document.getElementById('today').textContent=now.toLocaleDateString('vi-VN',{weekday:'long',day:'2-digit',month:'2-digit'});
 (async()=>{
   try{
