@@ -7,6 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/html2canvas-pro@1.6.7/dist/html2canvas-pro.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script src="sb.js"></script>
+<script src="shell.js" defer></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap');
 
@@ -404,6 +405,19 @@ input:focus, select:focus, textarea:focus { border-color: #a9541f; }
 .a-primary { background: #a9541f; }
 .a-gold { background: #7e3c14; }
 .a-ghost { background: #f3e2d3; color: #7e3c14; }
+
+/* ── máy tính (≥1024px): nhập liệu bên trái, ảnh hóa đơn cập nhật trực tiếp bên phải ── */
+@media (min-width:1024px){
+  .desk{display:grid;grid-template-columns:minmax(0,1fr) minmax(380px,500px);gap:22px;max-width:1240px;margin:0 auto;padding:0 18px}
+  .desk>.panel{display:block}
+  #panel-preview{position:sticky;top:112px;align-self:start}
+  #panel-preview .preview-panel{padding:14px 0}
+  #tab-preview,#toggle-btn{display:none}
+  body.hist .desk{display:none}
+  #panel-history{max-width:900px;margin:0 auto}
+  .tabs{justify-content:center}
+  .tab{flex:0 0 200px}
+}
 </style>
 </head>
 <body>
@@ -432,6 +446,7 @@ input:focus, select:focus, textarea:focus { border-color: #a9541f; }
 <div id="sync-indicator" style="position:fixed;top:8px;right:8px;background:rgba(10,58,90,.9);color:#fff;padding:4px 10px;border-radius:12px;font-size:11px;z-index:100;display:none">💾 Đang lưu...</div>
 
 <!-- ── FORM PANEL ── -->
+<div class="desk">
 <div class="panel active" id="panel-form">
 <div class="form-body">
 
@@ -531,6 +546,8 @@ input:focus, select:focus, textarea:focus { border-color: #a9541f; }
     <p style="font-size:11px;color:#aaa;margin-top:10px;text-align:center">Xem trước thu nhỏ · Ảnh xuất đầy đủ độ nét</p>
   </div>
 </div>
+
+</div><!-- /desk -->
 
 <!-- ── HISTORY PANEL ── -->
 <div class="panel" id="panel-history">
@@ -675,8 +692,11 @@ const PRESET_GROUPS = [
 ];
 
 // ── TABS ──
+const isDesk = window.matchMedia('(min-width:1024px)');
 function switchTab(t) {
+  if (isDesk.matches && t==='preview') t='form';   // desktop shows the preview beside the form
   curTab = t;
+  document.body.classList.toggle('hist', t==='history');
   ['form','preview','history'].forEach(x => {
     document.getElementById('panel-'+x).classList.toggle('active', x===t);
     document.getElementById('tab-'+x).classList.toggle('active', x===t);
@@ -967,7 +987,8 @@ function init() {
     items.push({id:++idc, n:'Phòng (OTA)', q:1, u:'phòng', p:0, disc:0, note:''});
     drawForms(); render();
   }
-  window.addEventListener('resize', () => { if(curTab==='preview') scalePreview(); });
+  window.addEventListener('resize', () => { if(curTab==='preview' || isDesk.matches) scalePreview(); });
+  isDesk.addEventListener('change', () => { if(isDesk.matches && curTab==='preview') switchTab('form'); render(); scalePreview(); });
   ['f-guest','f-phone','f-room','f-checkin','f-checkout','f-deposit','f-note','f-qr','f-qr-note','f-rate','f-dep-pct','f-inv-type'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.addEventListener('input', ()=>scheduleSync());
   });
@@ -1198,7 +1219,7 @@ function render() {
   document.getElementById('s-usd').textContent=sub>0?fmtUSD(sub):'';
   document.getElementById('s-remain').textContent=dep>0?fmtD(rem):'—';
   buildHTML(document.getElementById('inv-export'), sub, dep, rem);
-  if(curTab==='preview') renderPreview();
+  if(curTab==='preview' || isDesk.matches) renderPreview();
   scheduleSync();
 }
 

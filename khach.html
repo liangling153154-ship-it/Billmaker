@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Lora:wght@600;700&display=swap">
 <script src="sb.js"></script>
+<script src="shell.js" defer></script>
 <style>
 /* Hồ sơ khách: mỗi khách một mã KH, các hóa đơn (phòng/xe + combo) và từng lần thu tiền.
    Cùng bảng màu với combo.html. */
@@ -89,6 +90,18 @@ h2{font-family:var(--display);font-size:1.1rem;margin:16px 0 8px}
   transition:opacity .2s;max-width:calc(100vw - 32px);text-align:center}
 .toast.show{opacity:1}
 [hidden]{display:none!important}
+/* ── máy tính (≥1024px): danh sách khách bên trái, hồ sơ bên phải ── */
+#vEmpty{display:none}
+@media (min-width:1024px){
+  .wrap{max-width:1240px}
+  .wrap.split{display:grid;grid-template-columns:400px minmax(0,1fr);gap:20px;align-items:start}
+  .wrap.split .tabs{grid-column:1/-1}
+  .wrap.split #vList{grid-column:1;position:sticky;top:64px;max-height:calc(100vh - 80px);overflow:auto;padding-right:4px}
+  .wrap.split #vProfile,.wrap.split #vEmpty{grid-column:2}
+  .wrap.split #vEmpty:not([hidden]){display:grid;place-items:center;min-height:300px;border:1.5px dashed var(--line);border-radius:14px;color:var(--muted)}
+  #back{display:none}
+  .cust[aria-current="true"]{border-color:var(--accent);background:var(--soft)}
+}
 </style>
 </head>
 <body>
@@ -134,6 +147,8 @@ h2{font-family:var(--display);font-size:1.1rem;margin:16px 0 8px}
   </section>
 
   <!-- ── cần theo dõi ── -->
+  <section id="vEmpty" hidden><p>Chọn một khách bên trái để xem hồ sơ</p></section>
+
   <section id="vFollow" hidden>
     <div id="follow"><p class="hint">⏳ Đang tải…</p></div>
   </section>
@@ -159,17 +174,22 @@ function errText(e){return /does not exist|schema cache|Could not find/i.test(e.
   ?'Database chưa được nâng cấp: chạy file supabase/002_khach_thu_tien.sql trên Supabase trước.':e.message;}
 
 // ── điều hướng: #KH-0001 mở hồ sơ, #follow mở tab theo dõi ──
+const wide=window.matchMedia('(min-width:1024px)');
 function show(view){
-  $('vList').hidden=view!=='list'; $('vProfile').hidden=view!=='profile'; $('vFollow').hidden=view!=='follow';
+  const w=wide.matches;
+  document.querySelector('main.wrap').classList.toggle('split',view!=='follow');
+  $('vList').hidden=!(view==='list'||(w&&view==='profile')); $('vProfile').hidden=view!=='profile'; $('vFollow').hidden=view!=='follow';
+  $('vEmpty').hidden=!(w&&view==='list');
   $('tabCust').classList.toggle('on',view!=='follow'); $('tabFollow').classList.toggle('on',view==='follow');
 }
 function route(){
   const h=decodeURIComponent(location.hash.slice(1));
-  if(/^KH-\d+$/.test(h)){ show('profile'); loadProfile(h); }
+  if(/^KH-\d+$/.test(h)){ show('profile'); loadProfile(h); if(wide.matches) loadList(); }
   else if(h==='follow'){ show('follow'); loadFollow(); }
   else { show('list'); loadList(); }
 }
 window.addEventListener('hashchange',route);
+wide.addEventListener('change',route);
 $('tabCust').onclick=()=>{ location.hash=''; };
 $('tabFollow').onclick=()=>{ location.hash='follow'; };
 $('back').onclick=()=>{ location.hash=''; };
@@ -212,7 +232,8 @@ function drawList(){
   const box=$('custList'), q=$('q').value.trim();
   const rows=listRows.filter(c=>(fStatus==='all'||c.k===fStatus)&&(fSeg==='all'||(fSeg==='none'?!c.segment:c.segment===fSeg)));
   if(!rows.length){ box.innerHTML=`<p class="hint">${q||fStatus!=='all'||fSeg!=='all'?'Không có khách nào khớp.':'Chưa có khách nào. Bấm ➕ Thêm khách.'}</p>`; return; }
-  box.innerHTML=rows.map(c=>`<a class="card cust" href="#${esc(c.id)}" style="display:grid;text-decoration:none">
+  const curId=decodeURIComponent(location.hash.slice(1));
+  box.innerHTML=rows.map(c=>`<a class="card cust" href="#${esc(c.id)}"${c.id===curId?' aria-current="true"':''} style="display:grid;text-decoration:none">
     <b>${esc(c.name||'(chưa có tên)')}</b><span class="r">${kchip(c.k)}</span>
     <span class="m">${esc(c.id)} · ${esc(c.phone||'chưa có số')}</span><span class="r">${segchip(c.segment)}</span></a>`).join('');
 }

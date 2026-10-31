@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Lora:wght@600;700&display=swap">
 <script src="sb.js"></script>
+<script src="shell.js" defer></script>
 <style>
 /* Lịch công việc: mỗi ngày khách đến/đi, xe chạy, xe máy, nghỉ sớm, tiền còn thu, checklist chưa xong.
    Tất cả tính từ hóa đơn + hồ sơ khách, không có dữ liệu riêng. */
@@ -70,6 +71,14 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font
 .sum{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:12px}
 .sum div{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px;font-size:12px;color:var(--muted)}
 .sum b{display:block;font-size:18px;color:var(--ink)}
+/* ── máy tính (≥1024px): tuần thành 7 cột, tháng ô lớn hơn ── */
+@media (min-width:1024px){
+  .wrap{max-width:1400px}
+  #cal.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;align-items:start}
+  #cal.week .day{margin:0}
+  .mc{min-height:110px}
+  .sum{max-width:720px}
+}
 </style>
 </head>
 <body>
@@ -184,6 +193,7 @@ function summary(days){
 }
 function draw(){
   document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.view===view));
+  $('cal').className=view;
   if(view==='week'){
     const s=startOfWeek(anchor), days=[...Array(7)].map((_,k)=>addD(s,k));
     $('title').textContent=`${dm(days[0])} – ${dm(days[6])}/${days[6].slice(0,4)}`;
