@@ -245,7 +245,7 @@ function drawList(){
   if(!rows.length){ box.innerHTML=`<p class="hint">${q||fStatus!=='all'||fSeg!=='all'?'Không có khách nào khớp.':'Chưa có khách nào. Bấm ➕ Thêm khách.'}</p>`; return; }
   const curId=decodeURIComponent(location.hash.slice(1));
   box.innerHTML=rows.map(c=>`<a class="card cust" href="#${esc(c.id)}"${c.id===curId?' aria-current="true"':''} style="display:grid;text-decoration:none">
-    <b>${esc(c.name||'(chưa có tên)')}${c.arr?` <span class="arr" title="${c.arr.bus?'Đêm lên xe đi Cao Bằng':'Ngày đến'}">· ${ddmm(c.arr.d)}${c.arr.bus?' bus':''}</span>`:''}</b><span class="r">${kchip(c.k)}</span>
+    <b>${esc(c.name||'(chưa có tên)')}${c.arr?` <span class="arr" title="${c.arr.bus?'Đến Cao Bằng bằng xe (sáng sớm)':'Ngày đến'}">· ${ddmm(c.arr.d)}${c.arr.bus?' bus':''}</span>`:''}</b><span class="r">${kchip(c.k)}</span>
     <span class="m">${esc(c.id)} · ${esc(c.phone||'chưa có số')}</span><span class="r">${segchip(c.segment)}</span></a>`).join('');
 }
 

@@ -5,10 +5,11 @@
 --  Chạy lại không sao. Không xoá hay sửa dữ liệu.
 -- ════════════════════════════════════════════════════════════════
 --  Hóa đơn có vé xe (kể cả hóa đơn chỉ có vé xe) giờ có ngày đến / ngày đi:
---    ngày đến = ngày lên xe đi Cao Bằng (đêm khách đi xe); app ghi kèm chữ "bus"
+--    ngày đến = ngày xe ĐẾN Cao Bằng; xe chạy từ 17:00 trở đi (xe đêm) thì đến sáng hôm sau,
+--               chưa ghi giờ cũng coi là xe đêm; app ghi kèm chữ "bus"
 --    ngày đi  = ngày xe RỜI Cao Bằng
 --  Hóa đơn có cả phòng và vé xe: lấy ngày sớm nhất làm ngày đến, muộn nhất làm ngày đi.
---  Cột mới bills.via_bus = true khi ngày đến là ngày lên xe (không phải ngày nhận phòng).
+--  Cột mới bills.via_bus = true khi ngày đến lấy từ vé xe (trước ngày nhận phòng hoặc không có phòng).
 
 drop view if exists bills;
 create view bills with (security_invoker = true) as
@@ -23,6 +24,7 @@ with b as (
     left join lateral (
       select min(case when it->'bus'->>'to' ilike '%cao b%'
                       then (it->'bus'->>'date')::date
+                           + case when coalesce(nullif(substring(it->'bus'->>'time' from '^(\d{1,2})'),''),'99')::int >= 17 then 1 else 0 end
                       when not coalesce(it->'bus'->>'from' ilike '%cao b%', false)
                       then (it->'bus'->>'date')::date end) as arrive,
              max(case when it->'bus'->>'from' ilike '%cao b%'
