@@ -103,12 +103,6 @@ h2{font-family:var(--display);font-size:1.1rem;margin:16px 0 8px}
   #back{display:none}
   .cust[aria-current="true"]{border-color:var(--accent);background:var(--soft)}
 }
-.av-btn{border:0;background:none;padding:0;border-radius:50%;cursor:pointer;flex:none}
-.av-btn:focus-visible{outline:2px solid var(--brown,#a9541f);outline-offset:2px}
-.av-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;max-height:320px;overflow-y:auto;padding:2px}
-.av-grid button{display:flex;flex-direction:column;align-items:center;gap:3px;border:1px solid var(--line,#e5d9cc);background:#fff;border-radius:10px;padding:6px 2px;font:12px inherit;cursor:pointer;color:inherit}
-.av-grid button[aria-pressed="true"]{border-color:var(--brown,#a9541f);box-shadow:inset 0 0 0 1px var(--brown,#a9541f)}
-.av-grid button:disabled{opacity:.3;cursor:not-allowed}
 .cust .arr{font-weight:600;color:var(--brown,#a9541f);white-space:nowrap}
 </style>
 </head>
@@ -336,8 +330,7 @@ function drawProfile(){
   $('profile').innerHTML=`
   <div class="card" style="margin-top:10px">
     <div id="pView">
-      <div class="row" style="justify-content:space-between;flex-wrap:nowrap"><span style="display:flex;align-items:center;gap:10px;min-width:0">${'avatar' in c?`<button type="button" id="avBtn" class="av-btn" aria-label="Đổi con vật">${avatarHtml(c,46)}</button>`:avatarHtml(c,46)}<h2 style="margin:0">${esc(c.name||'(chưa có tên)')}</h2></span><b>${esc(c.id)}</b></div>
-      <div id="avPick" hidden></div>
+      <div class="row" style="justify-content:space-between;flex-wrap:nowrap"><span style="display:flex;align-items:center;gap:10px;min-width:0">${avatarHtml(c,46)}<h2 style="margin:0">${esc(c.name||'(chưa có tên)')}</h2></span><b>${esc(c.id)}</b></div>
       <div class="row" style="margin-top:4px">${kchip(custStatus(bills))}</div>
       ${c.segment===undefined?'<p class="hint err">Cần chạy supabase/004_trang_thai_nhom_khach.sql để chọn nhóm khách.</p>'
         :`<div class="filters" style="margin:8px 0 0" role="group" aria-label="Nhóm khách">${Object.entries(SEGS).map(([v,l])=>
@@ -367,7 +360,6 @@ function drawProfile(){
   <h2>Hóa đơn (${bills.length})</h2>
   ${bills.length?bills.map((b,i)=>billCard(b,i,pays)).join(''):'<p class="hint">Khách này chưa có hóa đơn. Bấm một nút ở trên để tạo.</p>'}
   <div id="unlinked"></div>`;
-  if($('avBtn')) $('avBtn').onclick=openAvatarPicker;
   $('pEdit').onclick=()=>{ $('pView').hidden=true; $('pForm').hidden=false; };
   $('eCancel').onclick=()=>{ $('pView').hidden=false; $('pForm').hidden=true; };
   $('pForm').onsubmit=saveCustomer;
@@ -530,22 +522,6 @@ async function loadUnlinked(){
       catch(err){ toast('Lỗi: '+errText(err)); }
     });
   }catch(e){}
-}
-
-async function openAvatarPicker(){
-  const box=$('avPick'); if(!box.hidden){ box.hidden=true; return; }
-  box.hidden=false; box.innerHTML='<p class="hint">⏳ Đang tải…</p>';
-  try{
-    const {used}=await avatarUse(), me=cur.c;
-    box.innerHTML=`<p class="hint" style="margin:10px 0 6px">Chọn con vật cho ${esc(me.name||me.id)}. Con mờ đang có khách khác chưa hoàn thành dùng.</p>
-      <div class="av-grid">${Object.entries(ANIMALS).map(([k,nm])=>{ const taken=used.has(k)&&used.get(k)!==me.id;
-        return `<button type="button" data-k="${k}"${taken?' disabled':''} aria-pressed="${me.avatar===k}" title="${esc(nm)}${taken?' (đang dùng)':''}">${avatarHtml({id:me.id,avatar:k},38)}<span>${esc(nm)}</span></button>`; }).join('')}</div>`;
-    box.querySelectorAll('button[data-k]').forEach(b=>b.onclick=async()=>{
-      try{ await sb('customers?id=eq.'+encodeURIComponent(me.id),{method:'PATCH',prefer:'return=minimal',body:{avatar:b.dataset.k}});
-        me.avatar=b.dataset.k; toast('Đã đổi sang '+ANIMALS[b.dataset.k]); drawProfile(); loadUnlinked(); const r=listRows.find(x=>x.id===me.id); if(r){ r.avatar=me.avatar; drawList(); } }
-      catch(err){ toast('Lỗi: '+errText(err)); }
-    });
-  }catch(err){ box.innerHTML=`<p class="err">${esc(errText(err))}</p>`; }
 }
 
 // ── cần theo dõi: chờ cọc, đã cọc còn thu, nháp gần đây ──
