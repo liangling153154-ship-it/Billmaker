@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Lora:wght@600;700&display=swap">
 <script src="sb.js"></script>
+<script src="shell.js" defer></script>
 <style>
 /* Lịch sử chung cho cả 3 nhánh: phòng & xe (Việt), combo, invoice (English). */
 :root{--bg:#f6efe8;--paper:#fffdfa;--ink:#2b1d14;--muted:#6e5a4b;--line:#e6d6c6;--brown:#a9541f;--brown-d:#7e3c14;--soft:#f3e2d3;
@@ -37,6 +38,7 @@ input[type=search]{width:100%;font:15px var(--body);color:var(--ink);background:
 .s-paid{color:#2e6b32;border-color:#8fc79a;background:#eaf6ec}
 .s-cancelled{color:#b3261e;border-color:#e6a19c;background:#fdeceb;text-decoration:line-through}
 .hint{font-size:13px;color:var(--muted)}
+@media (min-width:1024px){ .wrap{max-width:980px} }
 </style>
 </head>
 <body>
