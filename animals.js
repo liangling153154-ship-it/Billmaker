@@ -68,7 +68,7 @@ function avBg(id){ let h=0; for(const ch of String(id||'')) h=(h*31+ch.charCodeA
 function avatarHtml(c,size){
   size=size||28; const k=c&&c.avatar, nm=k&&ANIMALS[k];
   const box=`display:inline-grid;place-items:center;flex:none;width:${size}px;height:${size}px;border-radius:50%;background:${avBg(c&&c.id)};vertical-align:middle`;
-  if(nm) return `<span class="av" style="${box}" title="${nm}" role="img" aria-label="${nm}"><img src="animals/${k}.svg" alt="" width="${Math.round(size*.8)}" height="${Math.round(size*.8)}"></span>`;
+  if(nm) return `<span class="av" style="${box}" title="${nm}" role="img" aria-label="${nm}"><img src="animals/${k}.svg" alt="" width="${Math.round(size*.86)}" height="${Math.round(size*.86)}"></span>`;
   const ch=String((c&&c.name)||'?').trim().charAt(0).toUpperCase()||'?';
   return `<span class="av" style="${box};color:#2b1d14;font:700 ${Math.round(size*.45)}px system-ui,sans-serif" aria-hidden="true">${ch.replace(/[<&>"]/g,'')}</span>`;
 }

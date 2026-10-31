@@ -103,12 +103,7 @@ h2{font-family:var(--display);font-size:1.1rem;margin:16px 0 8px}
   #back{display:none}
   .cust[aria-current="true"]{border-color:var(--accent);background:var(--soft)}
 }
-.av-btn{border:0;background:none;padding:0;border-radius:50%;cursor:pointer;flex:none}
-.av-btn:focus-visible{outline:2px solid var(--brown,#a9541f);outline-offset:2px}
-.av-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;max-height:320px;overflow-y:auto;padding:2px}
-.av-grid button{display:flex;flex-direction:column;align-items:center;gap:3px;border:1px solid var(--line,#e5d9cc);background:#fff;border-radius:10px;padding:6px 2px;font:12px inherit;cursor:pointer;color:inherit}
-.av-grid button[aria-pressed="true"]{border-color:var(--brown,#a9541f);box-shadow:inset 0 0 0 1px var(--brown,#a9541f)}
-.av-grid button:disabled{opacity:.3;cursor:not-allowed}
+.cust>b{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .cust .arr{font-weight:600;color:var(--brown,#a9541f);white-space:nowrap}
 </style>
 </head>
@@ -272,7 +267,7 @@ function drawList(){
   if(!rows.length){ box.innerHTML=`<p class="hint">${q||fStatus!=='all'||fSeg!=='all'?'Không có khách nào khớp.':'Chưa có khách nào. Bấm ➕ Thêm khách.'}</p>`; return; }
   const curId=decodeURIComponent(location.hash.slice(1));
   box.innerHTML=rows.map(c=>`<a class="card cust" href="#${esc(c.id)}"${c.id===curId?' aria-current="true"':''} style="display:grid;text-decoration:none">
-    <b>${avatarHtml(c,28)} ${esc(c.name||'(chưa có tên)')}${c.arr?` <span class="arr" title="${c.arr.bus?'Đến Cao Bằng bằng xe (sáng sớm)':'Ngày đến'}">· ${ddmm(c.arr.d)}${c.arr.bus?' bus':''}</span>`:''}</b><span class="r">${kchip(c.k)}</span>
+    <b>${avatarHtml(c,38)} ${esc(c.name||'(chưa có tên)')}${c.arr?` <span class="arr" title="${c.arr.bus?'Đến Cao Bằng bằng xe (sáng sớm)':'Ngày đến'}">· ${ddmm(c.arr.d)}${c.arr.bus?' bus':''}</span>`:''}</b><span class="r">${kchip(c.k)}</span>
     <span class="m">${esc(c.id)} · ${esc(c.phone||'chưa có số')}</span><span class="r">${segchip(c.segment)}</span></a>`).join('');
 }
 
@@ -336,8 +331,7 @@ function drawProfile(){
   $('profile').innerHTML=`
   <div class="card" style="margin-top:10px">
     <div id="pView">
-      <div class="row" style="justify-content:space-between;flex-wrap:nowrap"><span style="display:flex;align-items:center;gap:10px;min-width:0">${'avatar' in c?`<button type="button" id="avBtn" class="av-btn" aria-label="Đổi con vật">${avatarHtml(c,46)}</button>`:avatarHtml(c,46)}<h2 style="margin:0">${esc(c.name||'(chưa có tên)')}</h2></span><b>${esc(c.id)}</b></div>
-      <div id="avPick" hidden></div>
+      <div class="row" style="justify-content:space-between;flex-wrap:nowrap"><span style="display:flex;align-items:center;gap:10px;min-width:0">${avatarHtml(c,60)}<h2 style="margin:0">${esc(c.name||'(chưa có tên)')}</h2></span><b>${esc(c.id)}</b></div>
       <div class="row" style="margin-top:4px">${kchip(custStatus(bills))}</div>
       ${c.segment===undefined?'<p class="hint err">Cần chạy supabase/004_trang_thai_nhom_khach.sql để chọn nhóm khách.</p>'
         :`<div class="filters" style="margin:8px 0 0" role="group" aria-label="Nhóm khách">${Object.entries(SEGS).map(([v,l])=>
@@ -367,7 +361,6 @@ function drawProfile(){
   <h2>Hóa đơn (${bills.length})</h2>
   ${bills.length?bills.map((b,i)=>billCard(b,i,pays)).join(''):'<p class="hint">Khách này chưa có hóa đơn. Bấm một nút ở trên để tạo.</p>'}
   <div id="unlinked"></div>`;
-  if($('avBtn')) $('avBtn').onclick=openAvatarPicker;
   $('pEdit').onclick=()=>{ $('pView').hidden=true; $('pForm').hidden=false; };
   $('eCancel').onclick=()=>{ $('pView').hidden=false; $('pForm').hidden=true; };
   $('pForm').onsubmit=saveCustomer;
@@ -532,22 +525,6 @@ async function loadUnlinked(){
   }catch(e){}
 }
 
-async function openAvatarPicker(){
-  const box=$('avPick'); if(!box.hidden){ box.hidden=true; return; }
-  box.hidden=false; box.innerHTML='<p class="hint">⏳ Đang tải…</p>';
-  try{
-    const {used}=await avatarUse(), me=cur.c;
-    box.innerHTML=`<p class="hint" style="margin:10px 0 6px">Chọn con vật cho ${esc(me.name||me.id)}. Con mờ đang có khách khác chưa hoàn thành dùng.</p>
-      <div class="av-grid">${Object.entries(ANIMALS).map(([k,nm])=>{ const taken=used.has(k)&&used.get(k)!==me.id;
-        return `<button type="button" data-k="${k}"${taken?' disabled':''} aria-pressed="${me.avatar===k}" title="${esc(nm)}${taken?' (đang dùng)':''}">${avatarHtml({id:me.id,avatar:k},38)}<span>${esc(nm)}</span></button>`; }).join('')}</div>`;
-    box.querySelectorAll('button[data-k]').forEach(b=>b.onclick=async()=>{
-      try{ await sb('customers?id=eq.'+encodeURIComponent(me.id),{method:'PATCH',prefer:'return=minimal',body:{avatar:b.dataset.k}});
-        me.avatar=b.dataset.k; toast('Đã đổi sang '+ANIMALS[b.dataset.k]); drawProfile(); loadUnlinked(); const r=listRows.find(x=>x.id===me.id); if(r){ r.avatar=me.avatar; drawList(); } }
-      catch(err){ toast('Lỗi: '+errText(err)); }
-    });
-  }catch(err){ box.innerHTML=`<p class="err">${esc(errText(err))}</p>`; }
-}
-
 // ── cần theo dõi: chờ cọc, đã cọc còn thu, nháp gần đây ──
 async function loadFollow(){
   const box=$('follow'); box.innerHTML='<p class="hint">⏳ Đang tải…</p>';
@@ -561,7 +538,7 @@ async function loadFollow(){
     const group=(st,title,hint)=>{ const g=st==='soon'?soon:rows.filter(r=>r.state===st&&(st!=='draft'||Number(r.total)>0)); if(!g.length) return '';
       return `<h2>${title} (${g.length})</h2><p class="hint">${hint}</p>`+g.map(b=>`<div class="card" style="padding:0;display:flex;align-items:stretch"><a class="cust" style="display:grid;text-decoration:none;flex:1;padding:12px 14px"
         href="${b.customer_id?'#'+esc(b.customer_id):editorUrl(b)}">
-        <b>${avatarHtml(custs[b.customer_id]||{id:b.customer_id||b.ref,name:b.guest},26)} ${esc(names[b.customer_id]||b.guest||'(chưa có tên)')}</b><span class="r">${chip(b.state)}</span>
+        <b>${avatarHtml(custs[b.customer_id]||{id:b.customer_id||b.ref,name:b.guest},36)} ${esc(names[b.customer_id]||b.guest||'(chưa có tên)')}</b><span class="r">${chip(b.state)}</span>
         <span class="m">${esc(billName(b))}${b.start_date?' · '+esc(fmtD(b.start_date)):''}</span>
         <span class="r m">còn ${money(b.remaining)}</span>
         ${b.customer_id?'':'<span class="m err" style="grid-column:1/-1">Chưa gắn mã khách</span>'}</a>
