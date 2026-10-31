@@ -102,6 +102,7 @@ h2{font-family:var(--display);font-size:1.1rem;margin:16px 0 8px}
   #back{display:none}
   .cust[aria-current="true"]{border-color:var(--accent);background:var(--soft)}
 }
+.cust .arr{font-weight:600;color:var(--brown,#a9541f);white-space:nowrap}
 </style>
 </head>
 <body>
@@ -186,6 +187,7 @@ function route(){
   const h=decodeURIComponent(location.hash.slice(1));
   if(/^KH-\d+$/.test(h)){ show('profile'); loadProfile(h); if(wide.matches) loadList(); }
   else if(h==='follow'){ show('follow'); loadFollow(); }
+  else if(h==='new'){ show('list'); loadList(); $('addOpen').click(); history.replaceState(null,'',location.pathname); }
   else { show('list'); loadList(); }
 }
 window.addEventListener('hashchange',route);
@@ -219,6 +221,14 @@ function custStatus(bills){
   if(!stages.length) return 'pending';
   return rank.find(r=>stages.includes(r));
 }
+// ngày đến hiển thị cạnh tên: chuyến đang/sắp tới gần nhất, không có thì chuyến gần nhất đã qua
+function arrival(bills){
+  const t=today(), live=bills.filter(b=>b.state!=='cancelled'&&b.start_date);
+  const up=live.filter(b=>(b.end_date||b.start_date)>=t).map(b=>b.start_date).sort();
+  if(up.length) return up[0];
+  return live.map(b=>b.start_date).sort().pop()||'';
+}
+const ddmm=d=>d?d.slice(8,10)+'/'+d.slice(5,7):'';
 const kchip=k=>`<span class="chip k-${k}">${KSTATE[k]}</span>`;
 const segchip=v=>v?`<span class="chip seg-chip">${esc(SEGS[v]||v)}</span>`:'';
 let fStatus='all', fSeg='all', listRows=[];
@@ -234,7 +244,7 @@ function drawList(){
   if(!rows.length){ box.innerHTML=`<p class="hint">${q||fStatus!=='all'||fSeg!=='all'?'Không có khách nào khớp.':'Chưa có khách nào. Bấm ➕ Thêm khách.'}</p>`; return; }
   const curId=decodeURIComponent(location.hash.slice(1));
   box.innerHTML=rows.map(c=>`<a class="card cust" href="#${esc(c.id)}"${c.id===curId?' aria-current="true"':''} style="display:grid;text-decoration:none">
-    <b>${esc(c.name||'(chưa có tên)')}</b><span class="r">${kchip(c.k)}</span>
+    <b>${esc(c.name||'(chưa có tên)')}${c.arr?` <span class="arr" title="Ngày đến">· ${ddmm(c.arr)}</span>`:''}</b><span class="r">${kchip(c.k)}</span>
     <span class="m">${esc(c.id)} · ${esc(c.phone||'chưa có số')}</span><span class="r">${segchip(c.segment)}</span></a>`).join('');
 }
 
@@ -256,7 +266,7 @@ async function loadList(){
       const bills=await sb('bills?select=customer_id,state,start_date,end_date,paid&customer_id=in.('+rows.map(c=>encodeURIComponent(c.id)).join(',')+')');
       bills.forEach(b=>(byC[b.customer_id]=byC[b.customer_id]||[]).push(b));
     }
-    listRows=rows.map(c=>({...c,segment:c.segment||'',k:custStatus(byC[c.id]||[])}));
+    listRows=rows.map(c=>({...c,segment:c.segment||'',k:custStatus(byC[c.id]||[]),arr:arrival(byC[c.id]||[])}));
     drawFilters(); drawList();
   }catch(e){ box.innerHTML=`<p class="err">${esc(errText(e))}</p>`; }
 }
