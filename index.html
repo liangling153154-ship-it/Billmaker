@@ -44,10 +44,15 @@ nav.list a:first-child{border-top:0}
 nav.list .t{flex:1;display:flex;flex-direction:column}
 nav.list .t span{font-size:12.5px;color:var(--muted)}
 .err{color:#b3261e;font-size:13px;margin:8px 0 0}
+.addcust{display:flex;align-items:center;gap:14px;margin:18px 0 0;padding:18px;border-radius:16px;background:var(--ink);color:#fff;min-height:84px;box-shadow:0 6px 18px #2b1d1426}
+.addcust .t{flex:1;display:flex;flex-direction:column;gap:2px}
+.addcust .n{font-size:19px;font-weight:700}
+.addcust .k{font-size:12.5px;color:#e6d2bf}
+.addcust svg{flex:none;background:var(--brown);border-radius:50%;padding:9px;width:46px;height:46px}
 /* ── máy tính (≥1024px): việc hôm nay trải ngang, tạo hóa đơn và quản lý thành 2 cột ── */
 @media (min-width:1024px){
   .wrap{max-width:1100px;display:grid;grid-template-columns:1fr 1fr;column-gap:28px;align-content:start}
-  .wrap>header,.wrap>section:first-of-type{grid-column:1/-1}
+  .wrap>header,.wrap>section:first-of-type,.wrap>.addcust{grid-column:1/-1}
   .stat{min-height:96px}.stat b{font-size:32px}
 }
 </style>
@@ -69,18 +74,19 @@ nav.list .t span{font-size:12.5px;color:var(--muted)}
     <p class="err" id="err" hidden></p>
   </section>
 
+  <a class="addcust" href="khach.html#new">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M3 20c.9-3.8 3.6-6 7-6"/><path d="M18 13v8M14 17h8"/></svg>
+    <span class="t"><span class="n">Thêm khách</span><span class="k">Bắt đầu từ đây: tạo hồ sơ, rồi làm combo, hóa đơn, checklist</span></span>
+  </a>
+
   <section aria-labelledby="h-new">
-    <h2 id="h-new">Tạo hóa đơn</h2>
+    <h2 id="h-new">Hóa đơn nhanh</h2>
+    <p class="sub" style="margin:-4px 0 10px">Khách dùng dịch vụ và trả tiền ngay. Combo tour tạo trong hồ sơ khách.</p>
     <div class="tiles">
       <a class="tile vn" href="vi.html">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
         <span class="t"><span class="k">Khách Việt</span><span class="n">Hóa đơn phòng &amp; vé xe</span></span>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
-      </a>
-      <a class="tile combo" href="combo.html">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a9541f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20l6-12 4 7 3-4 5 9z"/><circle cx="17" cy="6" r="2"/></svg>
-        <span class="t"><span class="k">Khách Việt</span><span class="n">Combo tour tự túc</span></span>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a9541f" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
       </a>
       <a class="tile en" href="en.html">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c9a84c" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c3 3.5 3 14.5 0 18"/><path d="M12 3c-3 3.5-3 14.5 0 18"/></svg>

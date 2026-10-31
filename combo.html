@@ -453,8 +453,9 @@ function render(){
 let codeState='', codeErr='';
 function renderCodebar(){
   const bar=$('codebar');
+  const noCust=!S.customer_id?`<div style="flex-basis:100%;background:#fff4e0;border:1px solid #e0a54a;border-radius:8px;padding:8px 10px;color:#8a4f00">Combo này chưa gắn khách. Nên <a href="khach.html#new">thêm khách</a> rồi tạo combo từ hồ sơ khách, để quản lý cọc và checklist.</div>`:'';
   if(S.code) bar.innerHTML=`<span>Mã hóa đơn</span><b>${esc(S.code)}</b><span class="hint">Lập ${fmtD(S.created)}</span>`+
-    (S.customer_id?`<span class="hint">👤 <a href="khach.html#${encodeURIComponent(S.customer_id)}">${esc(S.customer_id)}</a></span>`:'');
+    (S.customer_id?`<span class="hint">👤 <a href="khach.html#${encodeURIComponent(S.customer_id)}">${esc(S.customer_id)}</a></span>`:noCust);
   else if(codeState==='loading') bar.innerHTML='<span>⏳ Đang lấy mã hóa đơn…</span>';
   else bar.innerHTML=`<span>Chưa có mã hóa đơn</span><button type="button" class="btn ghost" id="retry">Lấy mã</button>${codeErr?`<span class="err">${esc(codeErr)}</span>`:''}`;
 }
