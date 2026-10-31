@@ -103,6 +103,7 @@ h2{font-family:var(--display);font-size:1.1rem;margin:16px 0 8px}
   #back{display:none}
   .cust[aria-current="true"]{border-color:var(--accent);background:var(--soft)}
 }
+.cust>b{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .cust .arr{font-weight:600;color:var(--brown,#a9541f);white-space:nowrap}
 </style>
 </head>
@@ -266,7 +267,7 @@ function drawList(){
   if(!rows.length){ box.innerHTML=`<p class="hint">${q||fStatus!=='all'||fSeg!=='all'?'Không có khách nào khớp.':'Chưa có khách nào. Bấm ➕ Thêm khách.'}</p>`; return; }
   const curId=decodeURIComponent(location.hash.slice(1));
   box.innerHTML=rows.map(c=>`<a class="card cust" href="#${esc(c.id)}"${c.id===curId?' aria-current="true"':''} style="display:grid;text-decoration:none">
-    <b>${avatarHtml(c,28)} ${esc(c.name||'(chưa có tên)')}${c.arr?` <span class="arr" title="${c.arr.bus?'Đến Cao Bằng bằng xe (sáng sớm)':'Ngày đến'}">· ${ddmm(c.arr.d)}${c.arr.bus?' bus':''}</span>`:''}</b><span class="r">${kchip(c.k)}</span>
+    <b>${avatarHtml(c,38)} ${esc(c.name||'(chưa có tên)')}${c.arr?` <span class="arr" title="${c.arr.bus?'Đến Cao Bằng bằng xe (sáng sớm)':'Ngày đến'}">· ${ddmm(c.arr.d)}${c.arr.bus?' bus':''}</span>`:''}</b><span class="r">${kchip(c.k)}</span>
     <span class="m">${esc(c.id)} · ${esc(c.phone||'chưa có số')}</span><span class="r">${segchip(c.segment)}</span></a>`).join('');
 }
 
@@ -330,7 +331,7 @@ function drawProfile(){
   $('profile').innerHTML=`
   <div class="card" style="margin-top:10px">
     <div id="pView">
-      <div class="row" style="justify-content:space-between;flex-wrap:nowrap"><span style="display:flex;align-items:center;gap:10px;min-width:0">${avatarHtml(c,46)}<h2 style="margin:0">${esc(c.name||'(chưa có tên)')}</h2></span><b>${esc(c.id)}</b></div>
+      <div class="row" style="justify-content:space-between;flex-wrap:nowrap"><span style="display:flex;align-items:center;gap:10px;min-width:0">${avatarHtml(c,60)}<h2 style="margin:0">${esc(c.name||'(chưa có tên)')}</h2></span><b>${esc(c.id)}</b></div>
       <div class="row" style="margin-top:4px">${kchip(custStatus(bills))}</div>
       ${c.segment===undefined?'<p class="hint err">Cần chạy supabase/004_trang_thai_nhom_khach.sql để chọn nhóm khách.</p>'
         :`<div class="filters" style="margin:8px 0 0" role="group" aria-label="Nhóm khách">${Object.entries(SEGS).map(([v,l])=>
@@ -537,7 +538,7 @@ async function loadFollow(){
     const group=(st,title,hint)=>{ const g=st==='soon'?soon:rows.filter(r=>r.state===st&&(st!=='draft'||Number(r.total)>0)); if(!g.length) return '';
       return `<h2>${title} (${g.length})</h2><p class="hint">${hint}</p>`+g.map(b=>`<div class="card" style="padding:0;display:flex;align-items:stretch"><a class="cust" style="display:grid;text-decoration:none;flex:1;padding:12px 14px"
         href="${b.customer_id?'#'+esc(b.customer_id):editorUrl(b)}">
-        <b>${avatarHtml(custs[b.customer_id]||{id:b.customer_id||b.ref,name:b.guest},26)} ${esc(names[b.customer_id]||b.guest||'(chưa có tên)')}</b><span class="r">${chip(b.state)}</span>
+        <b>${avatarHtml(custs[b.customer_id]||{id:b.customer_id||b.ref,name:b.guest},36)} ${esc(names[b.customer_id]||b.guest||'(chưa có tên)')}</b><span class="r">${chip(b.state)}</span>
         <span class="m">${esc(billName(b))}${b.start_date?' · '+esc(fmtD(b.start_date)):''}</span>
         <span class="r m">còn ${money(b.remaining)}</span>
         ${b.customer_id?'':'<span class="m err" style="grid-column:1/-1">Chưa gắn mã khách</span>'}</a>

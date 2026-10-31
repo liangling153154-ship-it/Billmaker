@@ -182,7 +182,7 @@ function groupsHTML(day){
   const ev=dayEvents(day); if(!ev.length) return '<div class="empty">Không có việc</div>';
   const by=new Map(); ev.forEach(e=>{ if(!by.has(e.who)) by.set(e.who,[]); by.get(e.who).push(e); });
   return [...by.entries()].map(([who,list])=>{ const types=[...new Set(list.map(e=>e.type))];
-    return `<details class="g"><summary><span class="w"><b>${avatarHtml(WHO[who]||{id:who,name:who},24)} ${esc(who)}</b><span class="gd">${types.map(t=>`<i class="dot t-${t}"></i>`).join('')}</span></span>
+    return `<details class="g"><summary><span class="w"><b>${avatarHtml(WHO[who]||{id:who,name:who},34)} ${esc(who)}</b><span class="gd">${types.map(t=>`<i class="dot t-${t}"></i>`).join('')}</span></span>
       <span class="gc">${list.length} việc</span><span class="chev" aria-hidden="true">›</span></summary>
       ${list.map(e=>`<a class="ev t-${e.type}" href="${esc(e.href)}"><span class="bar-c" aria-hidden="true"></span><span class="w"><b>${esc(e.what)}</b><div class="m">${esc(e.meta)}</div></span></a>`).join('')}
     </details>`; }).join('');
