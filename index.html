@@ -124,8 +124,10 @@ const now=new Date(), in3=new Date(); in3.setDate(in3.getDate()+5);   // báo tr
 document.getElementById('today').textContent=now.toLocaleDateString('vi-VN',{weekday:'long',day:'2-digit',month:'2-digit'});
 (async()=>{
   try{
-    const rows=await sb('bills?select=state,start_date&state=neq.cancelled&limit=1000');
-    const n=st=>rows.filter(r=>r.state===st).length;
+    const [rows,nd]=await Promise.all([sb('bills?select=state,start_date,customer_id&state=neq.cancelled&limit=1000'),
+      sb('customers?select=id&checklist->>no_deposit=eq.true&deleted_at=is.null').catch(()=>[])]);
+    const skip=new Set(nd.map(c=>c.id));   // khách không cần cọc: không tính vào "Chờ cọc"
+    const n=st=>rows.filter(r=>r.state===st&&!(st==='sent'&&skip.has(r.customer_id))).length;
     document.getElementById('nSent').textContent=n('sent');
     document.getElementById('nDep').textContent=n('deposited');
     document.getElementById('nSoon').textContent=rows.filter(r=>r.start_date&&r.start_date>=iso(now)&&r.start_date<=iso(in3)).length;
