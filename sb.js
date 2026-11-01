@@ -17,6 +17,7 @@ async function sb(path, {method = 'GET', body, prefer} = {}) {
       const text = await r.text();
       const data = text ? JSON.parse(text) : null;
       if (!r.ok) throw Object.assign(new Error((data && data.message) || 'HTTP ' + r.status), {fatal: r.status < 500});
+      if (method !== 'GET') senMine(path, body, data);
       return data;
     } catch (e) {
       last = e;
@@ -25,4 +26,20 @@ async function sb(path, {method = 'GET', body, prefer} = {}) {
     }
   }
   throw last;
+}
+
+// Ghi nhớ thay đổi do CHÍNH máy này làm, để chuông thông báo (shell.js) không báo lại cho mình.
+function senMine(path, body, data) {
+  try {
+    const b = body || {}, keys = [], q = (re) => (path.match(re) || [])[1];
+    if (/^invoices/.test(path)) keys.push('inv:' + (b.id || decodeURIComponent(q(/id=eq\.([^&]+)/) || '')));
+    else if (/^combos/.test(path)) keys.push('combo:' + (b.code || decodeURIComponent(q(/code=eq\.([^&]+)/) || '')));
+    else if (/^rpc\/add_customer/.test(path) && data && data.id) keys.push('kh:' + data.id);
+    else if (/^payments/.test(path) && b.amount) keys.push('pay:' + (b.invoice_id || b.combo_code) + ':' + b.amount);
+    if (!keys.length) return;
+    const m = JSON.parse(localStorage.getItem('sen_mine') || '{}'), now = Date.now();
+    keys.forEach(k => m[k] = now);
+    for (const k in m) if (now - m[k] > 7 * 864e5) delete m[k];
+    localStorage.setItem('sen_mine', JSON.stringify(m));
+  } catch (e) {}
 }
