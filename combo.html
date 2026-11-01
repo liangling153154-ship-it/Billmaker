@@ -147,6 +147,11 @@ button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
       <legend><span class="n">1</span>Vé xe Hà Nội → Cao Bằng</legend>
       <div class="row2"><label>Giờ xe<input data-k="x1.time" type="time"></label>
         <label>Loại giường<select data-k="x1.tk" data-list="TICKETS"></select></label></div>
+      <div id="upBox_x1" style="display:none;background:var(--soft);border:1px solid var(--accent);border-radius:9px;padding:10px 12px">
+        <div class="row2"><label>Phụ phí nâng cấp (mỗi khách)<input data-k="x1.up.rate" data-money inputmode="numeric" placeholder="Nhập phụ phí"></label>
+          <label>Số khách áp dụng<input data-k="x1.up.qty" type="number" min="0" inputmode="numeric"></label></div>
+        <p class="hint" id="upHint_x1" style="margin-top:6px"></p>
+      </div>
       <label>Điểm đón<input data-k="x1.from"></label><div class="chips" data-pick="x1.from" data-list="STOPS"></div>
       <label>Điểm trả<input data-k="x1.to"></label><div class="chips" data-pick="x1.to" data-list="STOPS"></div>
     </fieldset>
@@ -179,6 +184,11 @@ button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
       <legend><span class="n">7</span>Vé xe Cao Bằng → Hà Nội</legend>
       <div class="row2"><label>Ngày về<input data-k="x2.date" type="date"></label><label>Giờ xe<input data-k="x2.time" type="time"></label></div>
       <label>Loại giường<select data-k="x2.tk" data-list="TICKETS"></select></label>
+      <div id="upBox_x2" style="display:none;background:var(--soft);border:1px solid var(--accent);border-radius:9px;padding:10px 12px">
+        <div class="row2"><label>Phụ phí nâng cấp (mỗi khách)<input data-k="x2.up.rate" data-money inputmode="numeric" placeholder="Nhập phụ phí"></label>
+          <label>Số khách áp dụng<input data-k="x2.up.qty" type="number" min="0" inputmode="numeric"></label></div>
+        <p class="hint" id="upHint_x2" style="margin-top:6px"></p>
+      </div>
       <label>Điểm đón<input data-k="x2.from"></label><div class="chips" data-pick="x2.from" data-list="STOPS"></div>
       <label>Điểm trả<input data-k="x2.to"></label><div class="chips" data-pick="x2.to" data-list="STOPS"></div>
     </fieldset>
@@ -263,7 +273,7 @@ const BANKS={
   hung:    {bin:'970405', acc:'8314205207895', name:'TO VAN HUNG', bank:'Agribank'},
 };
 const LISTS={
-  TICKETS:['Giường nằm thường','Cabin đơn','Cabin đôi','Limousine'],
+  TICKETS:['Giường nằm thường','Cabin đơn','Cabin đôi','Cabin đôi nằm đơn','Limousine'],
   STAYS:["Sen's Homestay",'Đồi cỏ Ba Quang','Làng đá Khuổi Ky'],
   STOPS:['Bến xe Mỹ Đình, Hà Nội','Bến xe Giáp Bát, Hà Nội',"Sen's Homestay, TP Cao Bằng"],
   BIKES:['Honda Wave Alpha','Honda Future','Yamaha PG-1','Honda Vision','Honda Air Blade 125cc','Honda Air Blade 160cc','Honda Lead','Honda Winner X','Honda XR'],
@@ -292,6 +302,11 @@ const BIKE_UPGRADE={'Honda Future':70000,'Honda Vision':70000,'Yamaha PG-1':1000
 const isUpgrade=()=>S.bike.qty>0&&S.bike.type!==BASE_BIKE;
 function bikeDays(){ if(!S.bike.from||!S.bike.to) return 1;
   return Math.max(1,Math.round((new Date(S.bike.to+'T00:00:00')-new Date(S.bike.from+'T00:00:00'))/864e5)+1); }
+// bus upgrades: limousine (day bus) or one guest alone in a double cabin, +50k per guest per leg (bảng xe khách)
+const TICKET_UP={'Limousine':50000,'Cabin đôi nằm đơn':50000};
+const busUp=x=>TICKET_UP[x.tk]!==undefined||(x.up&&Number(x.up.rate)>0);
+const busUpTotal=x=>x.up&&busUp(x)?(Number(x.up.rate)||0)*(Number(x.up.qty)||0):0;
+const busUpAll=()=>busUpTotal(S.x1)+busUpTotal(S.x2);
 const bikeUpTotal=()=>isUpgrade()?(Number(S.bikeUp.rate)||0)*S.bike.qty*bikeDays():0;
 // older saved combos had no surcharge: open them unchanged
 function fromSaved(d){ const o=merge(blank(d.pkg),d); if(!d.bikeUp) o.bikeUp={rate:0}; return o; }
@@ -299,10 +314,10 @@ function blank(key='3n2d'){
   const P=PACKAGES[key]||PACKAGES['3n2d'];
   const S={code:'', created:isoLocal(new Date()), status:'draft', pkg:key,
     guest:'', phone:'', pax:2, start:addDays(isoLocal(new Date()),7),
-    x1:{time:'21:00', tk:'Cabin đơn', from:LISTS.STOPS[0], to:LISTS.STOPS[2]},
+    x1:{time:'21:00', tk:'Cabin đơn', from:LISTS.STOPS[0], to:LISTS.STOPS[2], up:{rate:0, qty:0}},
     early:{on:true}, stays:P.stays.map(place=>({place})),
     bike:{type:BASE_BIKE, qty:2}, bikeUp:{rate:0}, shower:{on:true},
-    x2:{time:'20:30', tk:'Cabin đơn', from:LISTS.STOPS[2], to:LISTS.STOPS[0]},
+    x2:{time:'20:30', tk:'Cabin đơn', from:LISTS.STOPS[2], to:LISTS.STOPS[0], up:{rate:0, qty:0}},
     price:P.price, deposit:0, mode:'pay', depPct:50, qr:'none', qrNote:'', qrNoteDirty:false, note:noteFor(P)};
   chainDates(S); return S;
 }
@@ -325,7 +340,7 @@ let S=blank();
 const pkg=()=>PACKAGES[S.pkg]||PACKAGES['3n2d'];
 // deposit mode asks for depPct% of the total; pay mode subtracts what was already received
 const totals=()=>{
-  const t=S.price*Math.max(1,S.pax)+bikeUpTotal();
+  const t=S.price*Math.max(1,S.pax)+bikeUpTotal()+busUpAll();
   if(S.mode==='deposit'){ const c=Math.round(t*S.depPct/100); return {t, c, r:t-c, dep:true}; }
   return {t, c:S.deposit, r:t-S.deposit, dep:false};
 };
@@ -385,7 +400,13 @@ function fillForm(){
   $('qrReset').style.display=S.qrNoteDirty?'':'none';
   drawBikeUp();
 }
-function drawBikeUp(){
+function drawBusUp(){
+  ['x1','x2'].forEach(k=>{ const x=S[k], show=busUp(x);
+    $('upBox_'+k).style.display=show?'':'none'; if(!show) return;
+    const r=Number(x.up.rate)||0, q=Number(x.up.qty)||0;
+    $('upHint_'+k).textContent=r&&q?`${q} khách × ${money(r)} = ${money(busUpTotal(x))} (cộng vào tổng)`:`Nâng cấp ${x.tk}: nhập phụ phí mỗi khách và số khách.`; });
+}
+function drawBikeUp(){ drawBusUp();
   $('bikeUpBox').style.display=isUpgrade()?'':'none';
   if(!isUpgrade()) return;
   const r=Number(S.bikeUp.rate)||0;
@@ -395,12 +416,13 @@ function drawBikeUp(){
 function onField(e){
   const el=e.target, k=el.dataset&&el.dataset.k; if(!k) return;
   let v=el.type==='checkbox'?el.checked:el.value;
-  if(el.hasAttribute('data-money')||k==='pax'||k==='bike.qty') v=num(v);
+  if(el.hasAttribute('data-money')||k==='pax'||k==='bike.qty'||/\.up\.qty$/.test(k)) v=num(v);
   if(k==='pax') v=Math.max(1,v);
   if(k==='depPct') v=Math.min(100,Math.max(1,num(v)||50));
   setP(S,k,v);
   if(k==='start'&&v) chainDates(S);
   if(k==='bike.type') S.bikeUp.rate=BIKE_UPGRADE[v]||0;
+  if(k==='x1.tk'||k==='x2.tk'){ const x=S[k.slice(0,2)]; x.up={rate:TICKET_UP[v]||0, qty:TICKET_UP[v]?(v==='Cabin đôi nằm đơn'?1:Math.max(1,S.pax)):0}; }
   if(k==='qrNote') S.qrNoteDirty=String(v).trim()!=='';
   changed(k==='start'||el.type==='checkbox'||el.tagName==='SELECT'||k==='guest');
 }
@@ -417,6 +439,8 @@ function steps(){
   if(bikeUpTotal()>0) out.push(['Phụ phí nâng cấp xe', `${S.bike.qty} xe × ${bikeDays()} ngày × ${money(S.bikeUp.rate)} = ${money(bikeUpTotal())}`]);
   if(S.shower.on) out.push(['Phòng tắm khi đợi xe', `Ngày ${fmtD(S.shower.date)}`]);
   out.push(['Vé xe Cao Bằng → Hà Nội', trip(S.x2)]);
+  [['x1','chiều đi'],['x2','chiều về']].forEach(([k,l])=>{ const x=S[k];
+    if(busUpTotal(x)>0) out.push([`Phụ phí nâng cấp xe khách (${l})`, `${esc(x.tk)} · ${x.up.qty} khách × ${money(x.up.rate)} = ${money(busUpTotal(x))}`]); });
   return out;
 }
 function invoiceHTML(){
@@ -437,8 +461,8 @@ function invoiceHTML(){
     <ol>${steps().map((s,i)=>`<li><span class="i">${String(i+1).padStart(2,'0')}</span><div><h4>${s[0]}</h4><p>${s[1]}</p></div></li>`).join('')}</ol>
     ${T.dep
       ? `<div class="total"><span class="lbl">Cần cọc ${S.depPct}%</span><span class="amt">${money(T.c)}</span></div>
-    <div class="pay rows"><div><span>Tổng (${money(S.price)} × ${Math.max(1,S.pax)} khách${bikeUpTotal()>0?' + phụ phí xe':''})</span><b>${money(T.t)}</b></div><div><span>Còn lại</span><b>${money(T.r)}</b></div></div>`
-      : `<div class="total"><span class="lbl">Tổng (${money(S.price)} × ${Math.max(1,S.pax)} khách${bikeUpTotal()>0?' + phụ phí xe':''})</span><span class="amt">${money(T.t)}</span></div>
+    <div class="pay rows"><div><span>Tổng (${money(S.price)} × ${Math.max(1,S.pax)} khách${bikeUpTotal()+busUpAll()>0?' + phụ phí':''})</span><b>${money(T.t)}</b></div><div><span>Còn lại</span><b>${money(T.r)}</b></div></div>`
+      : `<div class="total"><span class="lbl">Tổng (${money(S.price)} × ${Math.max(1,S.pax)} khách${bikeUpTotal()+busUpAll()>0?' + phụ phí':''})</span><span class="amt">${money(T.t)}</span></div>
     <div class="pay"><div><span>Đã cọc: </span><b>${money(T.c)}</b></div><div><span>Còn lại: </span><b>${money(T.r)}</b></div></div>`}
     ${qr}
     ${S.note?`<p class="note">${esc(S.note)}</p>`:''}
