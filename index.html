@@ -125,12 +125,13 @@ document.getElementById('today').textContent=now.toLocaleDateString('vi-VN',{wee
 (async()=>{
   try{
     const [rows,nd]=await Promise.all([sb('bills?select=state,start_date,customer_id&state=neq.cancelled&limit=1000'),
-      sb('customers?select=id&checklist->>no_deposit=eq.true&deleted_at=is.null').catch(()=>[])]);
-    const skip=new Set(nd.map(c=>c.id));   // khách không cần cọc: không tính vào "Chờ cọc"
-    const n=st=>rows.filter(r=>r.state===st&&!(st==='sent'&&skip.has(r.customer_id))).length;
+      sb('customers?select=id,checklist&deleted_at=is.null&or=(checklist->>no_deposit.eq.true,checklist->>done.eq.true)').catch(()=>[])]);
+    const skip=new Set(nd.filter(c=>c.checklist&&c.checklist.no_deposit).map(c=>c.id));   // khách không cần cọc: không tính vào "Chờ cọc"
+    const done=new Set(nd.filter(c=>c.checklist&&c.checklist.done).map(c=>c.id));          // khách đã đánh dấu hoàn thành: không tính
+    const n=st=>rows.filter(r=>r.state===st&&!done.has(r.customer_id)&&!(st==='sent'&&skip.has(r.customer_id))).length;
     document.getElementById('nSent').textContent=n('sent');
     document.getElementById('nDep').textContent=n('deposited');
-    document.getElementById('nSoon').textContent=rows.filter(r=>r.start_date&&r.start_date>=iso(now)&&r.start_date<=iso(in3)).length;
+    document.getElementById('nSoon').textContent=rows.filter(r=>!done.has(r.customer_id)&&r.start_date&&r.start_date>=iso(now)&&r.start_date<=iso(in3)).length;
   }catch(e){ const el=document.getElementById('err'); el.hidden=false; el.textContent='Chưa tải được số liệu: '+e.message; }
 })();
 </script>
