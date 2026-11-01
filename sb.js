@@ -17,7 +17,7 @@ async function sb(path, {method = 'GET', body, prefer} = {}) {
       const text = await r.text();
       const data = text ? JSON.parse(text) : null;
       if (!r.ok) throw Object.assign(new Error((data && data.message) || 'HTTP ' + r.status), {fatal: r.status < 500});
-      if (method !== 'GET') senMine(path, body, data);
+      if (method !== 'GET') senSaved(path, body, data, true);
       return data;
     } catch (e) {
       last = e;
@@ -25,21 +25,56 @@ async function sb(path, {method = 'GET', body, prefer} = {}) {
       await new Promise(res => setTimeout(res, 600 * (i + 1)));
     }
   }
+  if (method !== 'GET') senSaved(path, body, null, false);
   throw last;
 }
 
-// Ghi nhớ thay đổi do CHÍNH máy này làm, để chuông thông báo (shell.js) không báo lại cho mình.
-function senMine(path, body, data) {
+
+// Ô nhỏ nháy sáng ~3 giây trên chính máy vừa nhập: báo dữ liệu đã ghi lên máy chủ (hoặc chưa ghi được).
+function senSavedText(path, b, data) {
+  b = b || {};
+  if (/^rpc\/reserve_combo_code/.test(path)) return null;                       // chỉ giữ mã, chưa lưu gì
+  if (/^customers/.test(path) && Object.keys(b).length === 1 && 'avatar' in b) return null;   // app tự gán icon
+  if ('deleted_at' in b) return 'Đã xoá';
+  if ('cancelled_at' in b) return b.cancelled_at ? 'Đã huỷ hóa đơn' : 'Đã khôi phục hóa đơn';
+  if (/^rpc\/add_customer/.test(path)) return data && data.existed ? 'Khách đã có: ' + data.id : 'Đã thêm khách ' + ((data && data.id) || '');
+  if (/^invoices/.test(path)) return 'customer_id' in b && Object.keys(b).length === 1 ? 'Đã gắn hóa đơn vào khách'
+    : b.status === 'final' && Object.keys(b).length === 1 ? 'Đã đánh dấu đã gửi' : 'Đã lưu hóa đơn' + (b.guest ? ' · ' + b.guest : '');
+  if (/^combos/.test(path)) return 'customer_id' in b && Object.keys(b).length === 1 ? 'Đã gắn combo vào khách'
+    : b.status === 'final' && Object.keys(b).length === 1 ? 'Đã đánh dấu đã gửi' : 'Đã lưu combo' + (b.code ? ' · ' + b.code : '');
+  if (/^payments/.test(path)) return (b.amount < 0 ? 'Đã ghi hoàn ' : 'Đã ghi thu ') + Math.abs(Number(b.amount) || 0).toLocaleString('vi-VN') + 'đ';
+  if (/^customers/.test(path)) return 'checklist' in b ? 'Đã lưu checklist' : 'segment' in b ? 'Đã lưu nhóm khách' : 'Đã lưu hồ sơ khách';
+  return 'Đã lưu';
+}
+let senPopEl = null, senPopT = null;
+function senSaved(path, body, data, ok) {
   try {
-    const b = body || {}, keys = [], q = (re) => (path.match(re) || [])[1];
-    if (/^invoices/.test(path)) keys.push('inv:' + (b.id || decodeURIComponent(q(/id=eq\.([^&]+)/) || '')));
-    else if (/^combos/.test(path)) keys.push('combo:' + (b.code || decodeURIComponent(q(/code=eq\.([^&]+)/) || '')));
-    else if (/^rpc\/add_customer/.test(path) && data && data.id) keys.push('kh:' + data.id);
-    else if (/^payments/.test(path) && b.amount) keys.push('pay:' + (b.invoice_id || b.combo_code) + ':' + b.amount);
-    if (!keys.length) return;
-    const m = JSON.parse(localStorage.getItem('sen_mine') || '{}'), now = Date.now();
-    keys.forEach(k => m[k] = now);
-    for (const k in m) if (now - m[k] > 7 * 864e5) delete m[k];
-    localStorage.setItem('sen_mine', JSON.stringify(m));
+    const text = ok ? senSavedText(path, body, data) : 'Chưa lưu được lên máy chủ, thử lại';
+    if (!text || typeof document === 'undefined' || !document.body) return;
+    if (!document.getElementById('sen-pop-css')) {
+      const st = document.createElement('style'); st.id = 'sen-pop-css';
+      st.textContent = `
+#sen-pop{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 10px);transform:translateX(-50%);z-index:800;display:flex;align-items:center;gap:6px;max-width:calc(100vw - 32px);
+  padding:6px 12px;border-radius:999px;font:600 12.5px/1.3 system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;
+  background:#fff8e1;color:#5a3a00;border:1px solid #f0c040;animation:senJump .3s ease-out,senBlink .5s ease-in-out .3s infinite}
+#sen-pop.bad{background:#fdecea;color:#8a1c12;border-color:#e57368;animation:senJump .3s ease-out,senBlinkR .5s ease-in-out .3s infinite}
+#sen-pop.out{opacity:0;transition:opacity .3s}
+@keyframes senJump{0%{transform:translateX(-50%) translateY(-12px) scale(.8);opacity:0}70%{transform:translateX(-50%) translateY(4px) scale(1.04)}100%{transform:translateX(-50%)}}
+@keyframes senBlink{50%{box-shadow:0 0 0 4px #ffd54f88,0 0 14px #ffd54f}}
+@keyframes senBlinkR{50%{box-shadow:0 0 0 4px #ef9a9a88,0 0 14px #ef9a9a}}
+@media (min-width:1100px){#sen-pop{left:auto;top:auto;right:24px;bottom:24px;transform:none}
+  @keyframes senJump{0%{transform:translateY(12px) scale(.8);opacity:0}70%{transform:translateY(-4px) scale(1.04)}100%{transform:none}}}
+@media (prefers-reduced-motion:reduce){#sen-pop,#sen-pop.bad{animation:none}}`;
+      document.head.appendChild(st);
+    }
+    if (senPopEl) senPopEl.remove();
+    clearTimeout(senPopT);
+    senPopEl = document.createElement('div'); senPopEl.id = 'sen-pop';
+    senPopEl.setAttribute('role', 'status'); senPopEl.setAttribute('aria-live', 'polite');
+    if (!ok) senPopEl.className = 'bad';
+    senPopEl.textContent = (ok ? '✓ ' : '⚠ ') + text;
+    document.body.appendChild(senPopEl);
+    const el = senPopEl;
+    senPopT = setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 300); }, 3000);
   } catch (e) {}
 }
