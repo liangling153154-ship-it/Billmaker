@@ -114,6 +114,7 @@ h2{font-family:var(--display);font-size:1.1rem;margin:16px 0 8px}
 }
 .cust>b{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .nodep{border:1px dashed var(--line);background:none;color:var(--muted);border-radius:999px;padding:4px 10px;font:600 12.5px var(--body);cursor:pointer;min-height:30px}
+.donebtn{border:1px solid var(--good);background:#eef7ee;color:var(--good);border-radius:999px;padding:4px 12px;font:600 12.5px var(--body);cursor:pointer;min-height:30px}
 .nodep.undo{border:0;text-decoration:underline;padding:4px 4px;font-weight:500}
 .cust .arr{font-weight:600;color:var(--brown,#a9541f);white-space:nowrap}
 </style>
@@ -218,7 +219,10 @@ const addDaysIso=(n)=>{const d=new Date();d.setDate(d.getDate()+n);return d.getF
 // one stage per bill, then the guest takes the most pressing one
 // khách không cần cọc (thường là đặt vé xe hộ): lưu ở customers.checklist.no_deposit
 const noDep=c=>!!(c&&c.checklist&&c.checklist.no_deposit);
-function custStatus(bills,nodep){
+// Linh tự đánh dấu khách đã hoàn thành: customers.checklist.done
+const doneMark=c=>!!(c&&c.checklist&&c.checklist.done);
+function custStatus(bills,nodep,done){
+  if(done) return 'done';
   const t=today(), soon=addDaysIso(SOON_DAYS), rank=['serving','soon','deposit','pending','done'];
   const live=bills.filter(b=>b.state!=='cancelled');
   if(!live.length) return bills.length?'cancelled':'pending';
@@ -260,7 +264,7 @@ async function avatarUse(){
     sb('bills?select=customer_id,state,start_date,end_date,paid&customer_id=not.is.null&limit=5000')]);
   const by={}; bs.forEach(b=>(by[b.customer_id]=by[b.customer_id]||[]).push(b));
   const used=new Map(), counts={};
-  cs.forEach(c=>{ counts[c.avatar]=(counts[c.avatar]||0)+1; const k=custStatus(by[c.id]||[],noDep(c)); if(k!=='done'&&k!=='cancelled') used.set(c.avatar,c.id); });
+  cs.forEach(c=>{ counts[c.avatar]=(counts[c.avatar]||0)+1; const k=custStatus(by[c.id]||[],noDep(c),doneMark(c)); if(k!=='done'&&k!=='cancelled') used.set(c.avatar,c.id); });
   return {used,counts};
 }
 async function ensureAvatars(rows){
@@ -302,7 +306,7 @@ async function loadList(){
       const bills=await sb('bills?select=*&customer_id=in.('+rows.map(c=>encodeURIComponent(c.id)).join(',')+')');
       bills.forEach(b=>(byC[b.customer_id]=byC[b.customer_id]||[]).push(b));
     }
-    listRows=rows.map(c=>({...c,segment:c.segment||'',k:custStatus(byC[c.id]||[],noDep(c)),arr:arrival(byC[c.id]||[])}));
+    listRows=rows.map(c=>({...c,segment:c.segment||'',k:custStatus(byC[c.id]||[],noDep(c),doneMark(c)),arr:arrival(byC[c.id]||[])}));
     drawFilters(); drawList();
     if(listRows.some(c=>'avatar' in c&&!c.avatar)){ await ensureAvatars(listRows); drawList(); }
   }catch(e){ box.innerHTML=`<p class="err">${esc(errText(e))}</p>`; }
@@ -345,8 +349,9 @@ function drawProfile(){
   <div class="card" style="margin-top:10px">
     <div id="pView">
       <div class="row" style="justify-content:space-between;flex-wrap:nowrap"><span style="display:flex;align-items:center;gap:10px;min-width:0">${avatarHtml(c,60)}<h2 style="margin:0">${esc(c.name||'(chưa có tên)')}</h2></span><b>${esc(c.id)}</b></div>
-      <div class="row" style="margin-top:4px">${(()=>{ const nd=noDep(c), k=custStatus(bills,nd);
-        return kchip(k,nd)+(c.checklist!==undefined&&(k==='pending'||nd)?(nd?`<button type="button" class="nodep undo" id="noDepBtn">↺ Đổi lại: cần cọc</button>`:`<button type="button" class="nodep" id="noDepBtn" title="Khách không cần đặt cọc, ví dụ chỉ đặt vé xe hộ">Không cần cọc</button>`):''); })()}</div>
+      <div class="row" style="margin-top:4px">${(()=>{ const nd=noDep(c), dm=doneMark(c), k=custStatus(bills,nd,dm);
+        return kchip(k,nd)+(c.checklist!==undefined?(dm?`<button type="button" class="nodep undo" id="doneBtn">↺ Bỏ đánh dấu hoàn thành</button>`
+          :`<button type="button" class="donebtn" id="doneBtn" title="Đánh dấu khách đã hoàn thành chuyến">✓ Đã hoàn thành</button>`):'')+(dm?'':(c.checklist!==undefined&&(k==='pending'||nd)?(nd?`<button type="button" class="nodep undo" id="noDepBtn">↺ Đổi lại: cần cọc</button>`:`<button type="button" class="nodep" id="noDepBtn" title="Khách không cần đặt cọc, ví dụ chỉ đặt vé xe hộ">Không cần cọc</button>`):'')); })()}</div>
       ${c.segment===undefined?'<p class="hint err">Cần chạy supabase/004_trang_thai_nhom_khach.sql để chọn nhóm khách.</p>'
         :`<div class="filters" style="margin:8px 0 0" role="group" aria-label="Nhóm khách">${Object.entries(SEGS).map(([v,l])=>
           `<button type="button" data-seg="${v}" aria-pressed="${c.segment===v}">${l}</button>`).join('')}</div>
@@ -375,11 +380,18 @@ function drawProfile(){
   <h2>Hóa đơn (${bills.length})</h2>
   ${bills.length?bills.map((b,i)=>billCard(b,i,pays)).join(''):'<p class="hint">Khách này chưa có hóa đơn. Bấm một nút ở trên để tạo.</p>'}
   <div id="unlinked"></div>`;
+  if($('doneBtn')) $('doneBtn').onclick=async()=>{
+    const ck=cur.c.checklist=cur.c.checklist||{};
+    if(ck.done){ delete ck.done; delete ck.done_at; } else { ck.done=true; ck.done_at=new Date().toISOString(); }
+    try{ await sb('customers?id=eq.'+encodeURIComponent(cur.c.id),{method:'PATCH',prefer:'return=minimal',body:{checklist:ck}});
+      drawProfile(); loadUnlinked(); const r=listRows.find(x=>x.id===cur.c.id); if(r){ r.checklist=ck; r.k=custStatus(cur.bills,noDep(r),doneMark(r)); drawList(); } }
+    catch(err){ toast('Lỗi: '+errText(err)); }
+  };
   if($('noDepBtn')) $('noDepBtn').onclick=async()=>{
     const ck=cur.c.checklist=cur.c.checklist||{}; ck.no_deposit=!ck.no_deposit; if(!ck.no_deposit) delete ck.no_deposit;
     try{ await sb('customers?id=eq.'+encodeURIComponent(cur.c.id),{method:'PATCH',prefer:'return=minimal',body:{checklist:ck}});
       toast(ck.no_deposit?'Đã chuyển sang không cần cọc — nhớ đặt vé trong checklist':'Đã bỏ "không cần cọc"');
-      drawProfile(); loadUnlinked(); const r=listRows.find(x=>x.id===cur.c.id); if(r){ r.checklist=ck; r.k=custStatus(cur.bills,noDep(r)); drawList(); } }
+      drawProfile(); loadUnlinked(); const r=listRows.find(x=>x.id===cur.c.id); if(r){ r.checklist=ck; r.k=custStatus(cur.bills,noDep(r),doneMark(r)); drawList(); } }
     catch(err){ toast('Lỗi: '+errText(err)); }
   };
   $('pEdit').onclick=()=>{ $('pView').hidden=true; $('pForm').hidden=false; };
@@ -577,7 +589,7 @@ async function loadFollow(){
     const ids=[...new Set(rows.concat(soon).map(r=>r.customer_id).filter(Boolean))];
     const names={}, custs={};
     if(ids.length) (await sb('customers?select=*&id=in.('+ids.map(encodeURIComponent).join(',')+')')).forEach(c=>{names[c.id]=c.name; custs[c.id]=c;});
-    const group=(st,title,hint)=>{ const g=st==='soon'?soon:rows.filter(r=>r.state===st&&(st!=='draft'||Number(r.total)>0)&&!((st==='sent'||st==='draft')&&noDep(custs[r.customer_id]))); if(!g.length) return '';
+    const group=(st,title,hint)=>{ const g=(st==='soon'?soon:rows.filter(r=>r.state===st&&(st!=='draft'||Number(r.total)>0)&&!((st==='sent'||st==='draft')&&noDep(custs[r.customer_id])))).filter(r=>!doneMark(custs[r.customer_id])); if(!g.length) return '';
       return `<h2>${title} (${g.length})</h2><p class="hint">${hint}</p>`+g.map(b=>`<div class="card" style="padding:0;display:flex;align-items:stretch"><a class="cust" style="display:grid;text-decoration:none;flex:1;padding:12px 14px"
         href="${b.customer_id?'#'+esc(b.customer_id):editorUrl(b)}">
         <b>${avatarHtml(custs[b.customer_id]||{id:b.customer_id||b.ref,name:b.guest},36)} ${esc(names[b.customer_id]||b.guest||'(chưa có tên)')}</b><span class="r">${chip(b.state)}</span>
