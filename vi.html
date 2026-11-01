@@ -379,8 +379,10 @@ input:focus, select:focus, textarea:focus {
   display: flex; justify-content: space-between;
 }
 .sline { display: block; line-height: 1.6; }
-/* ── khách Việt: nâu cam Sen's cho giao diện làm việc. Chỉ đổi phần nhập liệu,
-      ảnh hóa đơn gửi khách (.inv-*) giữ nguyên màu cũ. ── */
+/* ── khách Việt: nâu cam Sen's cho cả giao diện làm việc lẫn ảnh hóa đơn gửi khách.
+      Hóa đơn khách tây (en.html) giữ xanh navy + vàng. ── */
+.inv-pad { --navy: #6b3a1c; --gold: #c8763a; --gold-light: #ecc9a8; --gold-bg: #fbf1e6; }
+.inv-pad .inv-deposit-badge { background: linear-gradient(90deg, #c8763a 0%, #a9541f 100%); box-shadow: 0 2px 6px rgba(169,84,31,.3); }
 body { background: #f6efe8; }
 .topbar { background: #a9541f; }
 .topbar-icon { background: #fff; }
