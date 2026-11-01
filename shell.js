@@ -63,90 +63,73 @@
   }
   window.addEventListener('hashchange', draw);
 
-  // ── chuông thông báo: sáng lên khi có dữ liệu mới do người khác ghi (khách, hóa đơn, combo, thu tiền) ──
-  const bellCss = `
-.sen-bell{flex:none;position:relative;width:38px;height:38px;border-radius:9px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;display:grid;place-feedItems:center;margin-left:auto;padding:0;opacity:.9}
-.sen-bell svg{width:19px!important;height:19px!important;display:block;margin:0!important;position:static!important;flex:none}
-.sen-bell{line-height:0;box-sizing:border-box;display:flex!important;align-items:center!important;justify-content:center!important}
-.sen-bell .dot{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;border-radius:9px;background:#ffcf33;color:#3a2a00;font:700 11px/18px system-ui,sans-serif;padding:0 4px;box-shadow:0 0 0 2px #fff,0 0 10px 3px #ffcf33;display:none}
-.sen-bell.on .dot{display:block;animation:senGlow 1.6s ease-in-out infinite}
-@keyframes senGlow{50%{box-shadow:0 0 0 2px #fff,0 0 2px 0 #ffcf33}}
-@media (prefers-reduced-motion:reduce){.sen-bell.on .dot{animation:none}}
-.sen-bell:focus-visible{outline:2px solid currentColor;outline-offset:2px}
-#sen-feed{position:fixed;top:64px;right:12px;width:min(360px,calc(100vw - 24px));max-height:70vh;overflow:auto;background:#fffaf4;color:#2b1d14;border:1px solid #e5d9cc;border-radius:12px;box-shadow:0 12px 32px #2b1d1433;z-index:600;font:14px "Be Vietnam Pro",system-ui,sans-serif}
-#sen-feed[hidden]{display:none}
-#sen-feed .h{display:flex;justify-content:space-between;align-feedItems:center;padding:12px 14px;border-bottom:1px solid #e5d9cc;font-weight:700}
-#sen-feed .h button{border:0;background:none;color:#a9541f;font:600 13px inherit;cursor:pointer}
-#sen-feed a{display:flex;gap:10px;padding:10px 14px;border-bottom:1px solid #f0e6da;color:inherit;text-decoration:none}
-#sen-feed a:hover{background:#f6ece1}
-#sen-feed a.new{background:#fff3cf}
-#sen-feed .i{flex:none;font-size:18px;line-height:1.2}
-#sen-feed .t{display:block;font-weight:600}
-#sen-feed .m{display:block;font-size:12px;color:#7a6a5c}
-#sen-feed .empty{padding:18px 14px;color:#7a6a5c}`;
-  const st2 = document.createElement('style'); st2.textContent = bellCss; document.head.appendChild(st2);
-  const top = document.querySelector('.top, .topbar') || document.querySelector('.wrap > header');
-  if (!top || typeof sb !== 'function') return;
-  const bell = document.createElement('button');
-  bell.type = 'button'; bell.className = 'sen-bell'; bell.setAttribute('aria-label', 'Thông báo dữ liệu mới');
-  bell.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg><span class="dot"></span>';
-  top.appendChild(bell);
-  const feed = document.createElement('div'); feed.id = 'sen-feed'; feed.hidden = true; document.body.appendChild(feed);
+  // ── thông báo nổi: khi máy khác ghi dữ liệu mới (khách, hóa đơn, combo, thu tiền),
+  //    một ô nhỏ sáng lên ở góc màn hình vài giây rồi tự biến mất ──
+  const popCss = `
+#sen-pops{position:fixed;top:14px;right:14px;z-index:700;display:flex;flex-direction:column;gap:8px;width:min(330px,calc(100vw - 28px));pointer-events:none}
+@media (max-width:640px){#sen-pops{left:50%;right:auto;transform:translateX(-50%)}}
+.sen-pop{pointer-events:auto;display:flex;gap:10px;align-items:center;padding:11px 14px;border-radius:12px;background:#fffaf0;color:#2b1d14;text-decoration:none;
+  border:1px solid #f0c860;box-shadow:0 6px 20px #2b1d1430,0 0 0 0 #ffcf33;font:14px "Be Vietnam Pro",system-ui,sans-serif;
+  animation:senIn .35s ease-out,senGlow 1.2s ease-in-out .35s 3;transition:opacity .5s,transform .5s}
+.sen-pop.out{opacity:0;transform:translateY(-8px)}
+.sen-pop .i{font-size:20px;flex:none}
+.sen-pop b{display:block;font-weight:600}
+.sen-pop span.m{display:block;font-size:12px;color:#7a6a5c}
+@keyframes senIn{from{opacity:0;transform:translateY(-12px)}}
+@keyframes senGlow{50%{box-shadow:0 6px 20px #2b1d1430,0 0 0 6px #ffcf3366}}
+@media (prefers-reduced-motion:reduce){.sen-pop{animation:none}}`;
+  const st2 = document.createElement('style'); st2.textContent = popCss; document.head.appendChild(st2);
+  if (typeof sb !== 'function') return;
+  const pops = document.createElement('div'); pops.id = 'sen-pops'; pops.setAttribute('role', 'status'); pops.setAttribute('aria-live', 'polite');
+  document.body.appendChild(pops);
 
   const LS = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const LSset = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
   if (!LS('sen_seen')) LSset('sen_seen', new Date().toISOString());   // lần đầu: không báo dồn dữ liệu cũ
   const esc2 = v => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
   const money2 = n => Number(n).toLocaleString('vi-VN') + 'đ';
-  const when = t => { const d = new Date(t), p = n => String(n).padStart(2, '0'); return p(d.getHours()) + ':' + p(d.getMinutes()) + ' · ' + p(d.getDate()) + '/' + p(d.getMonth() + 1); };
-  let feedItems = [];
+  const SHOW_MS = 5000;
 
+  function pop(e) {
+    const a = document.createElement('a'); a.className = 'sen-pop'; a.href = e.href;
+    a.innerHTML = `<span class="i" aria-hidden="true">${e.i}</span><span><b>${esc2(e.title)}</b><span class="m">${esc2(e.meta)}</span></span>`;
+    pops.appendChild(a);
+    setTimeout(() => { a.classList.add('out'); setTimeout(() => a.remove(), 500); }, SHOW_MS);
+  }
   async function poll() {
-    const since = new Date(Date.now() - 3 * 864e5).toISOString();   // danh sách gần đây (3 ngày)
-    const seen = LS('sen_seen'), mine = JSON.parse(LS('sen_mine') || '{}');
-    const enc = encodeURIComponent;
+    const seen = LS('sen_seen'), mine = JSON.parse(LS('sen_mine') || '{}'), enc = encodeURIComponent, q = enc(seen);
     try {
       const [cs, inv, cb, pay] = await Promise.all([
-        sb('customers?select=id,name,created_at&deleted_at=is.null&created_at=gt.' + enc(since) + '&order=created_at.desc&limit=20'),
-        sb('invoices?select=id,guest,lang,invoice_type,created_at,updated_at&deleted_at=is.null&updated_at=gt.' + enc(since) + '&order=updated_at.desc&limit=20'),
-        sb('combos?select=code,guest,created,updated_at&deleted_at=is.null&data->>code=not.is.null&updated_at=gt.' + enc(since) + '&order=updated_at.desc&limit=20'),
-        sb('payments?select=customer_id,invoice_id,combo_code,amount,created_at&deleted_at=is.null&created_at=gt.' + enc(since) + '&order=created_at.desc&limit=20')]);
+        sb('customers?select=id,name,created_at&deleted_at=is.null&created_at=gt.' + q + '&order=created_at.desc&limit=10'),
+        sb('invoices?select=id,guest,lang,invoice_type,created_at,updated_at&deleted_at=is.null&updated_at=gt.' + q + '&order=updated_at.desc&limit=10'),
+        sb('combos?select=code,guest,updated_at&deleted_at=is.null&data->>code=not.is.null&updated_at=gt.' + q + '&order=updated_at.desc&limit=10'),
+        sb('payments?select=customer_id,invoice_id,combo_code,amount,created_at&deleted_at=is.null&created_at=gt.' + q + '&order=created_at.desc&limit=10')]);
       const ids = [...new Set(pay.map(p => p.customer_id).filter(Boolean))], names = {};
       if (ids.length) (await sb('customers?select=id,name&id=in.(' + ids.map(enc).join(',') + ')')).forEach(c => names[c.id] = c.name);
       const all = [];
       cs.forEach(c => all.push({k: 'kh:' + c.id, t: c.created_at, i: '👤', title: 'Khách mới: ' + (c.name || c.id), meta: c.id, href: 'khach.html#' + enc(c.id)}));
       inv.forEach(v => all.push({k: 'inv:' + v.id, t: v.updated_at, i: '🧾',
-        title: (v.created_at === v.updated_at || new Date(v.updated_at) - new Date(v.created_at) < 120000 ? 'Hóa đơn mới: ' : 'Sửa hóa đơn: ') + (v.guest || '(chưa có tên)'),
-        meta: (v.lang === 'en' ? 'Invoice (English)' : v.invoice_type === 'bus' ? 'Vé xe' : 'Phòng & vé xe'), href: (v.lang === 'en' ? 'en.html' : 'vi.html') + '?open=' + enc(v.id)}));
+        title: (new Date(v.updated_at) - new Date(v.created_at) < 120000 ? 'Hóa đơn mới: ' : 'Sửa hóa đơn: ') + (v.guest || '(chưa có tên)'),
+        meta: v.lang === 'en' ? 'Invoice (English)' : v.invoice_type === 'bus' ? 'Vé xe' : 'Phòng & vé xe', href: (v.lang === 'en' ? 'en.html' : 'vi.html') + '?open=' + enc(v.id)}));
       cb.forEach(c => all.push({k: 'combo:' + c.code, t: c.updated_at, i: '🗺', title: 'Combo: ' + (c.guest || '(chưa có tên)'), meta: c.code, href: 'combo.html?open=' + enc(c.code)}));
       pay.forEach(p => all.push({k: 'pay:' + (p.invoice_id || p.combo_code) + ':' + p.amount, t: p.created_at, i: '💰',
         title: (p.amount < 0 ? 'Hoàn tiền ' : 'Thu tiền ') + money2(Math.abs(p.amount)) + (names[p.customer_id] ? ' · ' + names[p.customer_id] : ''),
         meta: p.customer_id || '', href: p.customer_id ? 'khach.html#' + enc(p.customer_id) : 'lichsu.html'}));
-      // bỏ những thay đổi chính máy này vừa làm
-      feedItems = all.filter(e => !(mine[e.k] && new Date(e.t).getTime() <= mine[e.k] + 120000))
-        .sort((a, b) => a.t < b.t ? 1 : -1).slice(0, 25);
-      feedItems.forEach(e => e.fresh = e.t > seen);
-      const n = feedItems.filter(e => e.fresh).length;
-      bell.classList.toggle('on', n > 0);
-      bell.querySelector('.dot').textContent = n > 9 ? '9+' : n;
-      bell.title = n ? n + ' thay đổi mới' : 'Không có gì mới';
-      if (!feed.hidden) drawFeed();
+      if (!all.length) return;
+      LSset('sen_seen', all.reduce((m, x) => x.t > m ? x.t : m, seen));
+      // bỏ thay đổi do chính máy này vừa làm; mỗi hóa đơn/combo chỉ báo 1 lần
+      const seenK = new Set(), fresh = all.filter(e => !(mine[e.k] && new Date(e.t).getTime() <= mine[e.k] + 120000))
+        .sort((a, b) => a.t < b.t ? 1 : -1).filter(e => !seenK.has(e.k) && seenK.add(e.k));
+      // hóa đơn đang được gõ sửa liên tục: mỗi mục báo tối đa 1 lần / 10 phút
+      const popped = JSON.parse(LS('sen_popped') || '{}'), now = Date.now();
+      for (const k in popped) if (now - popped[k] > 600000) delete popped[k];
+      const show = fresh.filter(e => !popped[e.k]); show.forEach(e => popped[e.k] = now); LSset('sen_popped', JSON.stringify(popped));
+      if (!show.length) return;
+      fresh.length = 0; fresh.push(...show);
+      fresh.slice(0, 3).reverse().forEach(pop);
+      if (fresh.length > 3) pop({i: '🔔', title: 'Còn ' + (fresh.length - 3) + ' thay đổi khác', meta: 'Xem trong Lịch sử hóa đơn / Khách hàng', href: 'lichsu.html'});
     } catch (e) {}
   }
-  function drawFeed() {
-    feed.innerHTML = '<div class="h"><span>Dữ liệu mới</span><button type="button" id="sen-close">Đóng</button></div>' +
-      (feedItems.length ? feedItems.map(e => `<a href="${esc2(e.href)}" class="${e.fresh ? 'new' : ''}"><span class="i" aria-hidden="true">${e.i}</span><span><span class="t">${esc2(e.title)}</span><span class="m">${esc2(e.meta)} · ${when(e.t)}</span></span></a>`).join('')
-        : '<p class="empty">Chưa có thay đổi nào trong 3 ngày qua.</p>');
-    feed.querySelector('#sen-close').onclick = () => { feed.hidden = true; };
-  }
-  bell.onclick = e => {
-    e.stopPropagation();
-    if (!feed.hidden) { feed.hidden = true; return; }
-    drawFeed(); feed.hidden = false;
-    const newest = feedItems.reduce((m, x) => x.t > m ? x.t : m, LS('sen_seen'));   // đã xem: tắt đèn, vẫn tô vàng mục mới cho tới lần mở sau
-    LSset('sen_seen', newest); bell.classList.remove('on');
-  };
-  document.addEventListener('click', e => { if (!feed.hidden && !feed.contains(e.target)) feed.hidden = true; });
-  poll(); setInterval(() => { if (!document.hidden) poll(); }, 60000);
+  poll(); setInterval(() => { if (!document.hidden) poll(); }, 30000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
 })();
