@@ -112,6 +112,8 @@ button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .inv .qr .acc{font-family:var(--display);font-size:1.05rem;font-weight:700;color:var(--i-accent);letter-spacing:.02em}
 .inv .qr .amt{font-weight:700;color:var(--i-accent)}
 .inv .note{font-size:.8rem;color:var(--i-muted);white-space:pre-wrap;margin:0}
+.inv .selftour{font-size:.78rem;line-height:1.5;color:var(--i-ink);background:var(--i-soft);border-left:3px solid var(--i-accent);border-radius:6px;padding:8px 10px}
+.inv .selftour b{color:var(--i-accent)}
 .inv .foot{font-size:.78rem;color:var(--i-muted);text-align:center;border-top:1px dashed var(--i-line);padding-top:10px}
 #exp{position:fixed;left:-10000px;top:0;width:480px}
 #exp .inv{border:0;border-radius:0}
@@ -466,6 +468,7 @@ function invoiceHTML(){
     <div class="pay"><div><span>Đã cọc: </span><b>${money(T.c)}</b></div><div><span>Còn lại: </span><b>${money(T.r)}</b></div></div>`}
     ${qr}
     ${S.note?`<p class="note">${esc(S.note)}</p>`:''}
+    <div class="selftour"><b>Combo tự túc, không phải tour.</b> Sen's Homestay hỗ trợ quý khách đặt trọn gói vé xe khứ hồi, chỗ lưu trú uy tín và xe máy tại Cao Bằng, giúp tiết kiệm thời gian tìm kiếm, đặt chỗ. Quý khách tự do di chuyển, tham quan theo lịch trình gợi ý.</div>
     <div class="foot">Cảm ơn quý khách đã chọn Sen's Homestay. Chúc chuyến đi Cao Bằng thật vui!</div>
   </div></div>`;
 }
