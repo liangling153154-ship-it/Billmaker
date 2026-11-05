@@ -343,8 +343,22 @@ async function loadProfile(id){
       sb('bills?select=*&customer_id=eq.'+encodeURIComponent(id)+'&order=updated_at.desc'),
       sb('payments?select=*&customer_id=eq.'+encodeURIComponent(id)+'&deleted_at=is.null&order=paid_on.asc,created_at.asc')]);
     if(!cs.length){ box.innerHTML='<p class="err">Không tìm thấy khách '+esc(id)+'.</p>'; return; }
-    cur={c:cs[0],bills,pays}; drawProfile(); loadUnlinked();
+    cur={c:cs[0],bills,pays,deps:await loadDeps(bills)}; drawProfile(); loadUnlinked();
   }catch(e){ box.innerHTML=`<p class="err">${esc(errText(e))}</p>`; }
+}
+// tiền cọc đã nhận gõ trong form hóa đơn (chưa ghi thành khoản thu) → gợi ý "Ghi cọc"
+async function loadDeps(bills){
+  const deps={}, inv=bills.filter(b=>b.kind==='invoice').map(b=>b.ref), cb=bills.filter(b=>b.kind==='combo').map(b=>b.ref);
+  const inl=a=>'('+a.map(x=>'"'+String(x).replace(/"/g,'')+'"').join(',')+')';
+  try{
+    const [ri,rc]=await Promise.all([
+      inv.length?sb('invoices?select=id,data&id=in.'+encodeURIComponent(inl(inv))):[],
+      cb.length?sb('combos?select=code,deposit,data&code=in.'+encodeURIComponent(inl(cb))):[]]);
+    ri.forEach(r=>{ const d=r.data||{}, depMode=d.invoice_type==='deposit'||(d.invoice_type==='bus'&&d.bus_mode==='deposit');
+      if(!depMode&&Number(d.deposit)>0) deps['invoice:'+r.id]=Number(d.deposit); });
+    rc.forEach(r=>{ const m=(r.data||{}).mode; if(m!=='deposit'&&Number(r.deposit)>0) deps['combo:'+r.code]=Number(r.deposit); });
+  }catch(_){}
+  return deps;
 }
 function drawProfile(){
   const {c,bills,pays}=cur, live=bills.filter(b=>b.state!=='cancelled');
@@ -492,6 +506,9 @@ function billCard(b,i,pays){
     <div class="row" style="justify-content:space-between"><b>${esc(billName(b))}</b>${chip(b.state)}</div>
     <div class="hint">${b.kind==='combo'?'Đi':'Nhận phòng'} ${esc(fmtD(b.start_date))||'—'} · ${esc(b.guest||'')}</div>
     <div class="money"><div>Tổng<b>${money(b.total)}</b></div><div>Đã thu<b>${money(b.paid)}</b></div><div>Còn lại<b>${money(b.remaining)}</b></div></div>
+    ${ps.some(p=>p.amount<0)?`<p class="hint" style="color:var(--bad);margin:6px 0 0">⚠ Có khoản ghi là <b>hoàn tiền</b> (số âm). Nếu thật ra là tiền khách trả, bấm Xoá khoản đó rồi ghi lại.</p>`:''}
+    ${(()=>{ const d=Number((cur.deps||{})[b.kind+':'+b.ref])||0;
+      return d>0&&Number(b.paid)<=0&&b.state!=='cancelled'?`<p class="hint" style="margin:6px 0 0">Hóa đơn ghi khách đã cọc <b>${money(d)}</b> nhưng chưa ghi thu. <button type="button" class="btn ghost small" data-act="paydep" data-i="${i}" data-amt="${d}">Ghi cọc ${money(d)}</button></p>`:''; })()}
     ${ps.map(p=>`<div class="pay"><span>${esc(fmtD(p.paid_on))} · ${p.amount<0?'Hoàn ':''}${money(Math.abs(p.amount))}${p.account?' · '+esc(p.account):''}${p.note?' · '+esc(p.note):''}</span>
       <button type="button" class="x" data-act="unpay" data-p="${esc(p.id)}">Xoá</button></div>`).join('')}
     <form class="card" data-payform="${i}" hidden style="margin:8px 0 0;background:var(--soft)">
@@ -501,7 +518,7 @@ function billCard(b,i,pays){
         <label>Nhận qua<input name="account" list="accts" placeholder="Chuyển khoản / tiền mặt"></label>
         <label>Ghi chú<input name="note" placeholder="Ví dụ: cọc 50%"></label>
       </div>
-      <label class="row" style="flex-direction:row;margin-top:8px;color:var(--ink)"><input type="checkbox" name="refund" style="width:auto"> Đây là tiền hoàn lại cho khách</label>
+      <label class="row" style="flex-direction:row;margin-top:8px;color:var(--ink)"><input type="checkbox" name="refund" style="width:auto"> <span style="color:var(--bad)">Đây là tiền <b>hoàn lại</b> cho khách (chỉ tích khi trả tiền lại cho khách)</span></label>
       <div class="row" style="margin-top:8px"><button class="btn primary small">Lưu khoản thu</button><span class="err" data-payerr></span></div>
     </form>
     <div class="row" style="margin-top:8px">
@@ -511,6 +528,7 @@ function billCard(b,i,pays){
         ?`<button type="button" class="btn primary small" data-act="payall" data-i="${i}">✓ Thu nốt ${money(b.remaining)}</button>
           <button type="button" class="btn ghost small" data-act="pay" data-i="${i}">💵 Thu một phần</button>`
         :`<button type="button" class="btn primary small" data-act="pay" data-i="${i}">💵 Ghi thu tiền</button>`}
+      ${b.state!=='paid'&&b.state!=='cancelled'&&Number(b.remaining)>0?`<button type="button" class="btn small" style="background:var(--good);color:#fff;border-color:var(--good)" data-act="markpaid" data-i="${i}">✓ Đã thu đủ</button>`:''}
       ${b.state==='draft'?`<button type="button" class="btn ghost small" data-act="sent" data-i="${i}">Đã gửi khách</button>`:''}
       ${b.state==='cancelled'?`<button type="button" class="btn ghost small" data-act="uncancel" data-i="${i}">Khôi phục</button>`
         :`<button type="button" class="btn danger small" data-act="cancel" data-i="${i}">Hủy</button>`}
@@ -525,6 +543,16 @@ async function onBillAction(e){
         invoice_id:b.kind==='invoice'?b.ref:null, combo_code:b.kind==='combo'?b.ref:null,
         amount:Math.round(Number(b.remaining)), paid_on:today(), account:'', note:'thu nốt'}});
       toast('Đã thu đủ · hoàn thành'); }
+    if(act==='markpaid'){ if(!confirm(`Đánh dấu ${billName(b)} đã thu đủ?\nApp sẽ ghi khoản thu ${money(b.remaining)} hôm nay để hóa đơn chuyển sang Hoàn thành.`)) return;
+      await sb('payments',{method:'POST',prefer:'return=minimal',body:{customer_id:cur.c.id,
+        invoice_id:b.kind==='invoice'?b.ref:null, combo_code:b.kind==='combo'?b.ref:null,
+        amount:Math.round(Number(b.remaining)), paid_on:today(), account:'', note:'đánh dấu đã thu đủ'}});
+      toast('Đã thu đủ · hoàn thành'); }
+    if(act==='paydep'){ const amt=Math.round(Number(el.dataset.amt)||0); if(!amt||!confirm(`Ghi khoản cọc ${money(amt)} cho ${billName(b)}?`)) return;
+      await sb('payments',{method:'POST',prefer:'return=minimal',body:{customer_id:cur.c.id,
+        invoice_id:b.kind==='invoice'?b.ref:null, combo_code:b.kind==='combo'?b.ref:null,
+        amount:amt, paid_on:today(), account:'', note:'cọc (theo hóa đơn)'}});
+      toast('Đã ghi cọc '+money(amt)); }
     if(act==='sent') await sb(table(b)+encodeURIComponent(b.ref),{method:'PATCH',prefer:'return=minimal',body:{status:'final'}});
     if(act==='cancel'){ if(!confirm('Hủy '+billName(b)+'? Có thể khôi phục lại sau.')) return;
       await sb(table(b)+encodeURIComponent(b.ref),{method:'PATCH',prefer:'return=minimal',body:{cancelled_at:new Date().toISOString()}}); }
@@ -538,7 +566,7 @@ async function savePay(ev,b){
   ev.preventDefault(); const f=ev.target, out=f.querySelector('[data-payerr]');
   let amt=parseInt(String(f.amount.value).replace(/\D/g,''),10)||0;
   if(!amt){ out.textContent='Nhập số tiền.'; return; }
-  if(f.refund.checked) amt=-amt;
+  if(f.refund.checked){ if(!confirm(`Ghi ${money(amt)} là TIỀN HOÀN LẠI cho khách?\n(Số này sẽ bị TRỪ khỏi tiền đã thu. Nếu là tiền khách trả, bấm Hủy và bỏ tích ô hoàn tiền.)`)) return; amt=-amt; }
   try{
     await sb('payments',{method:'POST',prefer:'return=minimal',body:{customer_id:cur.c.id,
       invoice_id:b.kind==='invoice'?b.ref:null, combo_code:b.kind==='combo'?b.ref:null,
