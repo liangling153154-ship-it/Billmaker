@@ -31,7 +31,8 @@
     ['Tổng quan', [['index.html', 'Trang chủ', '#c9b8a8']]],
     ['Hóa đơn nhanh', [['vi.html', 'Phòng & vé xe', '#a9541f'], ['en.html', 'Invoice (English)', '#c9a84c', 'en']]],
     ['Quản lý', [['khach.html', 'Khách hàng', '#c9b8a8'], ['khach.html#follow', 'Cần theo dõi', '#c9b8a8'],
-      ['lich.html', 'Lịch công việc', '#c9b8a8'], ['lichsu.html', 'Lịch sử hóa đơn', '#c9b8a8']]]
+      ['lich.html', 'Lịch công việc', '#c9b8a8'], ['lichsu.html', 'Lịch sử hóa đơn', '#c9b8a8'],
+      ['https://sen-nghi-gio-production.up.railway.app/manager/', 'Lịch phòng ↗', '#5b8c5a']]]
   ];
   function current() {
     const page = (location.pathname.split('/').pop() || 'index.html');
@@ -42,7 +43,7 @@
     nav.innerHTML = '<a class="brand" href="index.html"><span class="logo" aria-hidden="true">S</span><b>Sen\'s Billmaker</b></a>' +
       '<a class="add" href="khach.html#new">＋ Thêm khách</a>' +
       items.map(([h, links]) => '<h6>' + h + '</h6>' + links.map(([href, label, color, cls]) =>
-        `<a class="i ${cls || ''}" href="${href}"${href === cur ? ' aria-current="page"' : ''}><span class="sw" style="background:${color}" aria-hidden="true"></span>${label}</a>`).join('')).join('');
+        `<a class="i ${cls || ''}" href="${href}"${href === cur ? ' aria-current="page"' : ''}${/^https?:/.test(href) ? ' target="_blank" rel="noopener"' : ''}><span class="sw" style="background:${color}" aria-hidden="true"></span>${label}</a>`).join('')).join('');
   }
   const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
   const nav = document.createElement('nav'); nav.id = 'sen-side'; nav.setAttribute('aria-label', 'Menu chính');
