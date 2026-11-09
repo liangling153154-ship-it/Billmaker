@@ -621,7 +621,7 @@ async function loadFollow(){
     const ids=[...new Set(rows.concat(soon).map(r=>r.customer_id).filter(Boolean))];
     const names={}, custs={};
     if(ids.length) (await sb('customers?select=*&id=in.('+ids.map(encodeURIComponent).join(',')+')')).forEach(c=>{names[c.id]=c.name; custs[c.id]=c;});
-    const group=(st,title,hint)=>{ const g=(st==='soon'?soon:rows.filter(r=>r.state===st&&(st!=='draft'||Number(r.total)>0)&&!((st==='sent'||st==='draft')&&noDep(custs[r.customer_id])))).filter(r=>!doneMark(custs[r.customer_id])); if(!g.length) return '';
+    const group=(st,title,hint)=>{ const g=(st==='soonDep'?soon.filter(r=>r.state==='deposited'||noDep(custs[r.customer_id])):st==='soonWait'?soon.filter(r=>r.state!=='deposited'&&!noDep(custs[r.customer_id])):rows.filter(r=>r.state===st&&(st!=='draft'||Number(r.total)>0)&&!((st==='sent'||st==='draft')&&noDep(custs[r.customer_id])))).filter(r=>!doneMark(custs[r.customer_id])); if(!g.length) return '';
       return `<h2>${title} (${g.length})</h2><p class="hint">${hint}</p>`+g.map(b=>`<div class="card" style="padding:0;display:flex;align-items:stretch"><a class="cust" style="display:grid;text-decoration:none;flex:1;padding:12px 14px"
         href="${b.customer_id?'#'+esc(b.customer_id):editorUrl(b)}">
         <b>${avatarHtml(custs[b.customer_id]||{id:b.customer_id||b.ref,name:b.guest},36)} ${esc(names[b.customer_id]||b.guest||'(chưa có tên)')}</b><span class="r">${chip(b.state)}</span>
@@ -629,7 +629,8 @@ async function loadFollow(){
         <span class="r m">còn ${money(b.remaining)}</span>
         ${b.customer_id?'':'<span class="m err" style="grid-column:1/-1">Chưa gắn mã khách</span>'}</a>
         <button type="button" class="x-del" data-kind="${b.kind}" data-ref="${esc(b.ref)}" data-name="${esc(billName(b))}" aria-label="Xoá ${esc(billName(b))}" style="border:0;border-left:1px solid var(--line);background:none;color:var(--bad);padding:0 14px;cursor:pointer;font:600 13px var(--body)">Xoá</button></div>`).join(''); };
-    box.innerHTML=(group('soon','🚌 Sắp đến (7 ngày tới)','Chuẩn bị phòng, đón xe, nhắc khách mang theo phần tiền còn lại.')+group('sent','⏳ Chờ cọc','Đã gửi hóa đơn, chưa nhận đồng nào — nhắn lại khách.')+
+    box.innerHTML=(group('soonWait','🚌 Sắp đến · ⏳ Chưa cọc (7 ngày tới)','Khách sắp đến mà chưa cọc: nhắn chốt ngay hoặc nhả phòng.')+
+      group('soonDep','🚌 Sắp đến · 💰 Đã cọc (7 ngày tới)','Chuẩn bị phòng, đón xe, nhắc khách mang theo phần tiền còn lại.')+group('sent','⏳ Chờ cọc','Đã gửi hóa đơn, chưa nhận đồng nào — nhắn lại khách.')+
       group('deposited','💰 Đã cọc, còn phải thu','Thu nốt khi khách đến hoặc trước ngày đi. Thu đủ là hóa đơn tự chuyển sang Hoàn thành và rời khỏi danh sách này.')+
       group('draft','📝 Nháp','Hóa đơn chưa gửi khách.'))||'<p class="hint">Không có hóa đơn nào cần theo dõi. 🎉</p>';
     box.querySelectorAll('.x-del').forEach(el=>el.onclick=async()=>{
