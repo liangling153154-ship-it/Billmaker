@@ -237,6 +237,8 @@ input:focus, select:focus, textarea:focus {
 .inv-logo-c svg { width: 18px; height: 18px; fill: #fff; }
 .inv-brand { font-size: 14.5px; font-weight: 800; color: var(--navy); letter-spacing: .8px; line-height: 1.25; }
 .inv-brand-s { font-size: 10px; color: var(--gold); letter-spacing: 2px; text-transform: uppercase; }
+.inv-branch { margin:-4px 0 10px; padding:5px 10px; border-radius:6px; background:rgba(0,0,0,.04); font-size:10.5px; letter-spacing:.3px; color:var(--gold); text-align:center; }
+.inv-branch b { font-weight:700; }
 .inv-contact { text-align: right; font-size: 10.5px; color: #777; line-height: 1.8; }
 .inv-title-row {
   display: flex; align-items: flex-end; justify-content: space-between;
@@ -1386,6 +1388,7 @@ function buildHTML(target, sub, dep, rem) {
       </div>
       <div class="inv-contact">+84 822 946 888<br>060 Tổ 7, Ngọc Xuân<br>TP. Cao Bằng</div>
     </div>
+    <div class="inv-branch">Cơ sở 1: <b>Sen's Homestay</b> · Cơ sở 2: <b>Hòa An Home</b></div>
     <div class="inv-title-row">
       <div class="inv-title">Hóa đơn</div>
       <div class="inv-guest-box"><span class="lbl">Khách</span><strong class="val">${guest}</strong></div>

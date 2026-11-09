@@ -112,6 +112,7 @@ button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .inv .qr .acc{font-family:var(--display);font-size:1.05rem;font-weight:700;color:var(--i-accent);letter-spacing:.02em}
 .inv .qr .amt{font-weight:700;color:var(--i-accent)}
 .inv .note{font-size:.8rem;color:var(--i-muted);white-space:pre-wrap;margin:0}
+.inv .branch{margin:0 0 8px;padding:5px 10px;border-radius:6px;background:#f6ede1;font-size:11px;color:#7a4a26;text-align:center}
 .inv .selftour{font-size:.78rem;line-height:1.5;color:var(--i-ink);background:var(--i-soft);border-left:3px solid var(--i-accent);border-radius:6px;padding:8px 10px}
 .inv .selftour b{color:var(--i-accent)}
 .inv .foot{font-size:.78rem;color:var(--i-muted);text-align:center;border-top:1px dashed var(--i-line);padding-top:10px}
@@ -457,6 +458,7 @@ function invoiceHTML(){
   <div class="inv-head"><div class="brand">Sen's Homestay<small>TP Cao Bằng · ĐT/Zalo 0822 946 888</small></div>
     <div class="meta"><b>${esc(S.code||'Chưa có mã')}</b>Ngày lập: ${fmtD(S.created)}</div></div>
   <div class="inv-body">
+    <div class="branch">Cơ sở 1: <b>Sen's Homestay</b> · Cơ sở 2: <b>Hòa An Home</b></div>
     <p class="title">${esc(pkg().title)}</p>
     ${T.dep?`<span class="badge">Hóa đơn đặt cọc ${S.depPct}%</span>`:''}
     <div class="cust"><div><span>Khách: </span><b>${esc(S.guest)||'—'}</b></div><div><span>SĐT: </span><b>${esc(S.phone)||'—'}</b></div>
