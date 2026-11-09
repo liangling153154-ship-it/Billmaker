@@ -524,6 +524,7 @@ input:focus, select:focus, textarea:focus { border-color: #a9541f; }
           <option value="personal">Tài khoản Cá nhân (Tô Thị Phương Linh)</option>
           <option value="homestay">Tài khoản Homestay (HKD Sen Homestay)</option>
           <option value="hung">Tài khoản Tô Văn Hùng (Agribank)</option>
+          <option value="hoaan">Tài khoản HKD Khách sạn Hòa An (MB)</option>
         </select></div>
       <div class="field" id="f-qr-note-wrap" style="display:none"><label>Nội dung chuyển khoản</label>
         <input type="text" id="f-qr-note" maxlength="70" oninput="onQRNoteInput()">
@@ -1353,6 +1354,7 @@ function buildHTML(target, sub, dep, rem) {
     personal: {bin:'970415', acc:'14862868', name:'TO THI PHUONG LINH', bank:'VietinBank', label:'Tài khoản Cá nhân'},
     homestay: {bin:'970415', acc:'102885812778', name:'HDK SEN HOMESTAY', bank:'VietinBank', label:'Tài khoản Homestay'},
     hung:     {bin:'970405', acc:'8314205207895', name:'TO VAN HUNG', bank:'Agribank', label:'Tài khoản Tô Văn Hùng'},
+    hoaan:    {bin:'970422', acc:'8868272878', name:'HKD KHACH SAN HOA AN', bank:'MB Bank', label:'Tài khoản HKD Khách sạn Hòa An'},
   };
   let qrHtml='';
   if (qrChoice && qrChoice!=='none' && BANKS[qrChoice]) {
