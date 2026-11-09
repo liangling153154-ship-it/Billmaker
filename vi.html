@@ -514,6 +514,7 @@ input:focus, select:focus, textarea:focus { border-color: #a9541f; }
         <select id="f-bus-mode" onchange="onTypeChange()" style="width:100%;padding:10px 12px;border:1.5px solid #e0d8cc;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--text);background:#fafaf8">
           <option value="pay">Thu đủ (trừ tiền cọc đã nhận)</option>
           <option value="deposit">Đặt cọc theo %</option>
+          <option value="onbus">Khách thanh toán trên xe</option>
         </select></div>
       <div class="field" id="f-pct-wrap" style="display:none"><label>% Đặt cọc</label>
         <input type="number" id="f-dep-pct" value="50" min="1" max="100" inputmode="numeric" oninput="render()"></div>
@@ -813,7 +814,7 @@ function applyPayload(p) {
   document.getElementById('f-qr').value       = S(p.qr_account)||'none';
   document.getElementById('f-inv-type').value = S(p.invoice_type)||'full';
   document.getElementById('f-dep-pct').value  = p.deposit_pct>0?p.deposit_pct:50;
-  document.getElementById('f-bus-mode').value = S(p.bus_mode)==='deposit'?'deposit':'pay';
+  document.getElementById('f-bus-mode').value = ['deposit','onbus'].includes(S(p.bus_mode))?S(p.bus_mode):'pay';
   loadedDepositPaid = ((p.invoice_type==='deposit' || (p.invoice_type==='bus' && p.bus_mode==='deposit')) && p.deposit_pct>0)
     ? Math.round((p.subtotal||0)*(p.deposit_pct||0)/100) : 0;
   if (p.rate) document.getElementById('f-rate').value = p.rate;
@@ -1010,6 +1011,7 @@ function addPreset(p) {
 const ROOM_ITEM={n:'Phòng (OTA)', u:'phòng'};
 const BUS_ITEM ={n:'Vé xe', u:'chuyến'};
 function isBusType(){ return document.getElementById('f-inv-type').value==='bus'; }
+function isOnBus(){ return isBusType() && document.getElementById('f-bus-mode').value==='onbus'; }
 // deposit invoice, or a bus invoice in "đặt cọc" mode
 function isDepositMode(){ const t=document.getElementById('f-inv-type').value;
   return t==='deposit' || (t==='bus' && document.getElementById('f-bus-mode').value==='deposit'); }
@@ -1311,7 +1313,8 @@ function buildHTML(target, sub, dep, rem) {
     ${co?`<span>📅 Trả phòng: <strong>${fmtDate(co)}</strong></span>`:''}
   </div>`:'';
 
-  const badgeHtml=isBus?`<div class="inv-deposit-badge">🚌 Hóa đơn vé xe (đặt hộ)${isDeposit?' · đặt cọc '+depPct+'%':''}</div>`
+  const onBus=isOnBus();
+  const badgeHtml=isBus?`<div class="inv-deposit-badge">🚌 Hóa đơn vé xe (đặt hộ)${isDeposit?' · đặt cọc '+depPct+'%':onBus?' · thanh toán trên xe':''}</div>`
     :isDeposit?`<div class="inv-deposit-badge">📌 Hóa đơn đặt cọc ${depPct}%</div>`:'';
 
   let totalHtml, depHtml='';
@@ -1327,6 +1330,15 @@ function buildHTML(target, sub, dep, rem) {
       <div class="inv-dep-row"><span>Tổng hóa đơn</span><span>${fmt(sub)} đ</span></div>
       <div class="inv-dep-rem"><span>Còn lại</span><span>${fmt(depRem)} đ${isBus?'':' · thanh toán khi nhận phòng'}</span></div>
     </div>`;
+  } else if (onBus) {
+    totalHtml=`<div class="inv-total-box">
+      <div class="inv-tot-lbl">Thanh toán trên xe</div>
+      <div class="inv-tot-right">
+        <div class="inv-tot-val">${fmt(sub)} đ</div>
+        <div class="inv-tot-usd">${fmtUSD(sub)}</div>
+      </div>
+    </div>
+    <div class="inv-dep-after"><div class="inv-dep-row" style="justify-content:center;text-align:center"><span>💵 Quý khách thanh toán trực tiếp cho nhà xe khi lên xe. Sen's chỉ giữ chỗ hộ, không thu tiền vé.</span></div></div>`;
   } else {
     totalHtml=`<div class="inv-total-box">
       <div class="inv-tot-lbl">Tổng</div>
@@ -1363,7 +1375,7 @@ function buildHTML(target, sub, dep, rem) {
     hoaan:    {bin:'970422', acc:'8868272878', name:'HKD KHACH SAN HOA AN', bank:'MB Bank', label:'Tài khoản HKD Khách sạn Hòa An'},
   };
   let qrHtml='';
-  if (qrChoice && qrChoice!=='none' && BANKS[qrChoice]) {
+  if (qrChoice && qrChoice!=='none' && BANKS[qrChoice] && !onBus) {
     const b=BANKS[qrChoice];
     const payAmt=isDeposit?depAmt:(rem>0?rem:sub);
     const info=(document.getElementById('f-qr-note').value.trim())||defaultQRNote();
@@ -1415,7 +1427,7 @@ function syncTypeUI() {
   const dm=isDepositMode();
   document.getElementById('f-bus-mode-wrap').style.display=isBus?'block':'none';
   document.getElementById('f-pct-wrap').style.display=dm?'block':'none';
-  document.getElementById('f-deposit-wrap').style.display=!dm?'block':'none';
+  document.getElementById('f-deposit-wrap').style.display=(!dm&&!isOnBus())?'block':'none';
   document.getElementById('f-phone-wrap').style.display=isBus?'block':'none';
   document.getElementById('f-room-row').style.display=isBus?'none':'';
   document.getElementById('f-stay-row').style.display=isBus?'none':'';
@@ -1426,7 +1438,7 @@ function onTypeChange() {
   swapStarterItems(t==='bus');
   const depEl=document.getElementById('f-deposit');
   const hintEl=document.getElementById('dep-hint');
-  if (isDepositMode()) { depEl.value=''; if(hintEl) hintEl.style.display='none'; }
+  if (isDepositMode() || isOnBus()) { depEl.value=''; if(hintEl) hintEl.style.display='none'; }
   else if (loadedDepositPaid>0 && !depEl.value) {
     depEl.value=loadedDepositPaid;
     if(hintEl) hintEl.style.display='block';
