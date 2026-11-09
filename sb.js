@@ -78,3 +78,21 @@ function senSaved(path, body, data, ok) {
     senPopT = setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 300); }, 3000);
   } catch (e) {}
 }
+
+// Hóa đơn "sau cọc" (đầy đủ, có ô "tiền cọc đã nhận") gửi khách → tự ghi khoản cọc vào sổ thu
+// nếu sổ thu của hóa đơn đó chưa đủ số cọc. Chỉ bù phần thiếu, không bao giờ ghi trùng.
+async function senAutoDeposit({kind, ref, customer_id, deposit}){
+  try{
+    const dep=Math.round(Number(deposit)||0);
+    if(!ref||!customer_id||dep<=0) return 0;
+    const col=kind==='combo'?'combo_code':'invoice_id';
+    const pays=await sb('payments?select=amount&'+col+'=eq.'+encodeURIComponent(ref));
+    const got=pays.reduce((s,x)=>s+Math.max(0,Number(x.amount)||0),0);
+    if(got>=dep) return 0;
+    const d=new Date(), iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    await sb('payments',{method:'POST',prefer:'return=minimal',body:{customer_id,
+      invoice_id:kind==='combo'?null:ref, combo_code:kind==='combo'?ref:null,
+      amount:dep-got, paid_on:iso, account:'', note:'cọc (tự ghi từ hóa đơn)'}});
+    return dep-got;
+  }catch(e){ console.warn('[auto-deposit]',e); return 0; }
+}

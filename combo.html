@@ -511,7 +511,8 @@ async function syncNow(){
   try{ await sb('combos?on_conflict=code',{method:'POST',prefer:'resolution=merge-duplicates,return=minimal',
     body:{code:S.code, status:S.status, pkg:S.pkg, created:S.created, guest:S.guest, phone:S.phone, pax:S.pax,
       start:S.start||null, total:T.t, deposit:T.c, balance:T.r, qr_account:S.qr, data:S,
-      ...(S.customer_id?{customer_id:S.customer_id}:{})}}); }
+      ...(S.customer_id?{customer_id:S.customer_id}:{})}});
+    if(S.status==='final' && S.mode!=='deposit') await senAutoDeposit({kind:'combo', ref:S.code, customer_id:S.customer_id, deposit:T.c}); }
   catch(e){ toast('Chưa lưu được, sẽ thử lại khi sửa tiếp'); }
 }
 function saveLocal(){ try{localStorage.setItem(LS_DRAFT,JSON.stringify(S));}catch(e){} }
