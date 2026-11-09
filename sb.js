@@ -86,7 +86,7 @@ async function senAutoDeposit({kind, ref, customer_id, deposit}){
     const dep=Math.round(Number(deposit)||0);
     if(!ref||!customer_id||dep<=0) return 0;
     const col=kind==='combo'?'combo_code':'invoice_id';
-    const pays=await sb('payments?select=amount&'+col+'=eq.'+encodeURIComponent(ref));
+    const pays=await sb('payments?select=amount&deleted_at=is.null&'+col+'=eq.'+encodeURIComponent(ref));
     const got=pays.reduce((s,x)=>s+Math.max(0,Number(x.amount)||0),0);
     if(got>=dep) return 0;
     const d=new Date(), iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');

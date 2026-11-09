@@ -505,14 +505,14 @@ async function reserveCode(){
 }
 let syncTimer=null;
 function syncSoon(){ clearTimeout(syncTimer); if(S.code) syncTimer=setTimeout(syncNow,1200); }
-async function syncNow(){
+async function syncNow(fromSend){
   if(!S.code) return;
   const T=totals();
   try{ await sb('combos?on_conflict=code',{method:'POST',prefer:'resolution=merge-duplicates,return=minimal',
     body:{code:S.code, status:S.status, pkg:S.pkg, created:S.created, guest:S.guest, phone:S.phone, pax:S.pax,
       start:S.start||null, total:T.t, deposit:T.c, balance:T.r, qr_account:S.qr, data:S,
       ...(S.customer_id?{customer_id:S.customer_id}:{})}});
-    if(S.status==='final' && S.mode!=='deposit') await senAutoDeposit({kind:'combo', ref:S.code, customer_id:S.customer_id, deposit:T.c}); }
+    if(fromSend===true && S.mode!=='deposit') await senAutoDeposit({kind:'combo', ref:S.code, customer_id:S.customer_id, deposit:T.c}); }
   catch(e){ toast('Chưa lưu được, sẽ thử lại khi sửa tiếp'); }
 }
 function saveLocal(){ try{localStorage.setItem(LS_DRAFT,JSON.stringify(S));}catch(e){} }
@@ -541,7 +541,7 @@ async function snap(){
   render();
   return html2canvas($('exp').firstElementChild,{scale:3,backgroundColor:'#fffdfa',logging:false,width:480,windowWidth:480});
 }
-function markSent(){ if(S.status!=='final'){ S.status='final'; saveLocal(); } syncNow(); }
+function markSent(){ if(S.status!=='final'){ S.status='final'; saveLocal(); } syncNow(true); }
 async function download(){
   try{ const c=await snap(); if(!c) return;
     const a=document.createElement('a'); a.download=fileName(); a.href=c.toDataURL('image/png'); a.click(); markSent();

@@ -750,7 +750,7 @@ async function syncNow(status='draft') {
   try {
     const pl=collectPayload(status);
     await sb('invoices?on_conflict=id', {method:'POST', prefer:'resolution=merge-duplicates,return=minimal', body:invoiceRow(pl)});
-    if (pl.status==='final' && !(pl.invoice_type==='deposit' || (pl.invoice_type==='bus' && pl.bus_mode==='deposit')))
+    if (status==='final' && !(pl.invoice_type==='deposit' || (pl.invoice_type==='bus' && pl.bus_mode==='deposit')))
       await senAutoDeposit({kind:'invoice', ref:pl.id, customer_id:pl.customer_id, deposit:pl.deposit});
     localStorage.setItem(LS_INV_ID, currentInvoiceId);
     showSync('✅ Saved');
