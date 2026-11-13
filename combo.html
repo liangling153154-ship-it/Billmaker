@@ -364,6 +364,7 @@ function drawStays(){
       <legend><span class="n"></span>Đêm ${i+1} – Lưu trú</legend>
       <div class="chips" data-pick="stays.${i}.place" data-list="STAYS"></div>
       <label>Nơi ở (gõ nếu khác)<input data-k="stays.${i}.place"></label>
+      <div class="row2"><label>Tên phòng / ghi chú<input data-k="stays.${i}.room" placeholder="VD: Phòng gỗ view đồi"></label><label>Số phòng<input data-k="stays.${i}.rooms" type="number" min="0" inputmode="numeric" placeholder="1"></label></div>
       <div class="row2"><label>Nhận phòng<input data-k="stays.${i}.in" type="date"></label><label>Trả phòng<input data-k="stays.${i}.out" type="date"></label></div>
     </fieldset>`).join('');
   buildControls($('stays'));
@@ -373,7 +374,7 @@ function setPackage(key){
   const old=pkg(), P=PACKAGES[key];
   if(!P||key===S.pkg) return;
   S.pkg=key;
-  S.stays=P.stays.map((place,i)=>({place:(S.stays[i]&&S.stays[i].place)||place}));
+  S.stays=P.stays.map((place,i)=>({...(S.stays[i]||{}),place:(S.stays[i]&&S.stays[i].place)||place}));
   if(S.price===old.price) S.price=P.price;        // only replace a price nobody typed over
   if(S.note===noteFor(old)) S.note=noteFor(P);
   chainDates(S); drawStays(); changed(true);
@@ -422,7 +423,7 @@ function drawBikeUp(){ drawBusUp();
 function onField(e){
   const el=e.target, k=el.dataset&&el.dataset.k; if(!k) return;
   let v=el.type==='checkbox'?el.checked:el.value;
-  if(el.hasAttribute('data-money')||k==='pax'||k==='bike.qty'||/\.up\.qty$/.test(k)) v=num(v);
+  if(el.hasAttribute('data-money')||k==='pax'||k==='bike.qty'||/^stays\.\d+\.rooms$/.test(k)||/\.up\.qty$/.test(k)) v=num(v);
   if(k==='pax') v=Math.max(1,v);
   if(k==='depPct') v=Math.min(100,Math.max(1,num(v)||50));
   setP(S,k,v);
@@ -440,7 +441,7 @@ function steps(){
   const trip=x=>`${esc(x.time)} ngày ${fmtD(x.date||S.start)} · ${esc(x.tk)}<br>Đón: ${esc(x.from)} → Trả: ${esc(x.to)}`;
   const out=[['Vé xe Hà Nội → Cao Bằng', trip(S.x1)]];
   if(S.early.on) out.push(['Chỗ nghỉ khi tới sớm', `Ngày ${fmtD(S.early.date)}`]);
-  S.stays.forEach((st,i)=>out.push([`Đêm ${i+1} – `+esc(st.place), `Nhận phòng ${fmtD(st.in)} · Trả phòng ${fmtD(st.out)}`]));
+  S.stays.forEach((st,i)=>out.push([`Đêm ${i+1} – `+esc(st.place), `${st.room?esc(st.room)+' · ':''}${Number(st.rooms)>0?st.rooms+' phòng · ':''}Nhận phòng ${fmtD(st.in)} · Trả phòng ${fmtD(st.out)}`]));
   if(S.bike.qty>0) out.push([isCar(S.bike.type)?'Xe ô tô có lái':'Xe máy di chuyển', `${S.bike.qty} xe ${esc(S.bike.type)} · ${fmtD(S.bike.from)} – ${fmtD(S.bike.to)}`]);
   if(bikeUpTotal()>0) out.push([isCar(S.bike.type)?'Phụ phí ô tô có lái':'Phụ phí nâng cấp xe', `${S.bike.qty} xe × ${bikeDays()} ngày × ${money(S.bikeUp.rate)} = ${money(bikeUpTotal())}`]);
   if(S.shower.on) out.push(['Phòng tắm khi đợi xe', `Ngày ${fmtD(S.shower.date)}`]);
