@@ -19,6 +19,7 @@ a{color:inherit;text-decoration:none}
 a:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .wrap{max-width:560px;margin:0 auto;padding:max(20px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) calc(28px + env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left))}
 header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.cs-switch{flex:none;padding:8px 12px;border-radius:999px;border:1px solid #d8c6b4;background:#fff;color:#5a3b25;font:600 13px/1.2 inherit;cursor:pointer;white-space:nowrap}
 .logo{width:46px;height:46px;border-radius:50%;background:var(--brown);color:#fff;display:grid;place-items:center;font:700 21px var(--display)}
 h1{margin:0;font:700 23px/1.1 var(--display)}
 .sub{font-size:13px;color:var(--muted)}
@@ -60,9 +61,20 @@ nav.list .t span{font-size:12.5px;color:var(--muted)}
 <body>
 <div class="wrap">
   <header>
-    <div class="logo" aria-hidden="true">S</div>
-    <div><h1>Sen's Billmaker</h1><div class="sub" id="today"></div></div>
+    <div class="logo" id="cs-logo" aria-hidden="true">S</div>
+    <div style="flex:1"><h1 id="cs-app">Sen's Billmaker</h1><div class="sub" id="today"></div></div>
+    <button type="button" class="cs-switch" id="cs-switch" aria-label="Chuyển hệ thống"></button>
   </header>
+  <script>
+  (function(){
+    const I=SEN_CS_INFO, O=SEN_CS_LIST[SEN_CS==='sen'?'hoaan':'sen'];
+    document.getElementById('cs-app').textContent=I.app;
+    const lg=document.getElementById('cs-logo'); lg.textContent=I.logo; lg.style.background=I.color;
+    const sw=document.getElementById('cs-switch'); sw.innerHTML='⇄ '+O.short;
+    sw.onclick=()=>{ if(confirm('Chuyển sang hệ thống '+O.short+'?\nKhách, hóa đơn và sổ thu của hai cơ sở tách riêng.')) senSwitchCs(SEN_CS==='sen'?'hoaan':'sen'); };
+    document.title=I.app;
+  })();
+  </script>
 
   <section aria-labelledby="h-today">
     <h2 id="h-today" style="margin-top:0">Việc hôm nay</h2>

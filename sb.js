@@ -4,9 +4,49 @@
 const SB_URL = 'https://hqomllgssmutrqtguedh.supabase.co';
 const SB_KEY = 'sb_publishable_8kBE_O-ZZ425DpwaNA7fqA_HA1psZVW';
 
+// ── Hai hệ thống: Sen's Homestay ('sen') và Hòa An ('hoaan') ──
+// Cơ sở đang mở: lấy từ link ?cs=hoaan|sen (nhớ lại trên máy này), mặc định Sen's.
+// Mọi đọc/ghi khách, hóa đơn, combo tự gắn cơ sở → hai bên tách hẳn dữ liệu.
+const SEN_CS_LIST = {
+  sen:   {name: "Sen's Homestay", short: "Sen's", app: "Sen's Billmaker", logo: 'S', color: '#a9541f', dark: '#2b1d14'},
+  hoaan: {name: 'Hòa An Home', short: 'Hòa An', app: 'Hòa An Billmaker', logo: 'H', color: '#2f6b5e', dark: '#17322c'}
+};
+const SEN_CS = (() => {
+  let v = 'sen';
+  try {
+    const q = new URLSearchParams(location.search).get('cs');
+    if (q && SEN_CS_LIST[q]) localStorage.setItem('sen_cs', q);
+    v = localStorage.getItem('sen_cs') || 'sen';
+  } catch (e) {
+    const q = typeof location !== 'undefined' && new URLSearchParams(location.search).get('cs');
+    if (q) v = q;
+  }
+  return SEN_CS_LIST[v] ? v : 'sen';
+})();
+const SEN_CS_INFO = SEN_CS_LIST[SEN_CS];
+function senSwitchCs(cs) {
+  try { localStorage.setItem('sen_cs', cs); } catch (e) {}
+  const u = new URL(location.href); u.searchParams.set('cs', cs); u.hash = '';
+  // trang đang soạn dở thuộc cơ sở cũ → về trang chủ của cơ sở mới cho chắc
+  location.href = 'index.html?cs=' + cs;
+}
+const SEN_BRANCHED = new Set(['customers', 'invoices', 'combos', 'bills']);
+function senScope(path, method, body) {
+  const tbl = path.split('?')[0];
+  if (tbl === 'rpc/add_customer' && body && typeof body === 'object') return [path, {...body, p_branch: SEN_CS}];
+  if (!SEN_BRANCHED.has(tbl)) return [path, body];
+  if (method === 'POST') {
+    if (Array.isArray(body)) body = body.map(b => ({...b, branch: SEN_CS}));
+    else if (body && typeof body === 'object') body = {...body, branch: SEN_CS};
+    return [path, body];
+  }
+  return [path + (path.includes('?') ? '&' : '?') + 'branch=eq.' + SEN_CS, body];
+}
+
 // sb('combos?select=code', {method, body, prefer}) → parsed JSON (or null).
 // Network errors and 5xx are retried twice; 4xx (bad request, no permission) fail at once.
 async function sb(path, {method = 'GET', body, prefer} = {}) {
+  [path, body] = senScope(path, method, body);
   const headers = {apikey: SB_KEY, 'Content-Type': 'application/json'};
   if (prefer) headers.Prefer = prefer;
   let last;
