@@ -374,7 +374,7 @@ input:focus, select:focus, textarea:focus {
 <div class="topbar">
   <div class="topbar-logo">
     <div class="topbar-icon"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></div>
-    <div class="topbar-name"><span>Sen's</span> Invoice</div>
+    <div class="topbar-name"><span id="tb-cs">Sen's</span> Invoice</div><script>document.getElementById('tb-cs').textContent=SEN_CS_INFO.short</script>
   </div>
   <div style="display:flex;gap:6px;align-items:center">
     <a href="index.html" style="background:none;border:1px solid rgba(255,255,255,.4);color:#fff;padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer;text-decoration:none;white-space:nowrap">☰ Menu</a>
@@ -519,7 +519,7 @@ input:focus, select:focus, textarea:focus {
 <script>
 let items = [], idc = 0, curTab = 'form';
 
-const PRESET_GROUPS = [
+let PRESET_GROUPS = [
   {
     label: '🛏 Room', key: 'room',
     items: [
@@ -597,6 +597,92 @@ const PRESET_GROUPS = [
       {n:'Bus Ticket',q:1,u:'ticket',p:0},
     ]
   }
+];
+
+// Hệ thống Hòa An: phòng & bảng giá riêng (theo services.html của Hòa An)
+if (typeof SEN_CS !== 'undefined' && SEN_CS === 'hoaan') PRESET_GROUPS = [
+  { label: '🛏 Room', key: 'room', subs: [
+      { label: 'Choose room', items: [
+          {lbl:'HA-101 Dorm',n:'Room HA-101 Dorm',q:1,u:'night',p:0},
+          {lbl:'HA-102',n:'Room HA-102',q:1,u:'night',p:0},
+          {lbl:'HA-201 Bamboo 1',n:'Room HA-201 Bamboo 1',q:1,u:'night',p:0},
+          {lbl:'HA-204 Rox 3',n:'Room HA-204 Rox 3',q:1,u:'night',p:0},
+          {lbl:'HA-301 Rox 1',n:'Room HA-301 Rox 1',q:1,u:'night',p:0},
+          {lbl:'HA-302 Rox 2',n:'Room HA-302 Rox 2',q:1,u:'night',p:0},
+          {lbl:'HA-304 Bamboo 2',n:'Room HA-304 Bamboo 2',q:1,u:'night',p:0},
+          {lbl:'HA-404 Azure 1',n:'Room HA-404 Azure 1',q:1,u:'night',p:0}
+      ]},
+      { label: 'Other', items: [
+          {n:'Room (OTA)',q:1,u:'room',p:0},
+          {n:'Room (Direct book)',q:1,u:'room',p:0},
+          {n:'Early Check-in (rent motorbike)',q:1,u:'pax',p:50000},
+          {n:'Early Check-in (no motorbike)',q:1,u:'pax',p:100000}
+      ]}
+  ]},
+  { label: '🏍 Motorbike Rental', key: 'bike', items: [
+          {n:'Honda Wave Alpha',q:1,u:'day',p:180000},
+          {n:'Honda Future',q:1,u:'day',p:250000},
+          {n:'Yamaha PG-1',q:1,u:'day',p:280000},
+          {n:'Honda Vision',q:1,u:'day',p:250000},
+          {n:'Honda Air Blade 125cc',q:1,u:'day',p:300000},
+          {n:'Honda Air Blade 160cc',q:1,u:'day',p:450000},
+          {n:'Honda Lead',q:1,u:'day',p:250000},
+          {n:'Honda Winner X',q:1,u:'day',p:280000},
+          {n:'Honda XR',q:1,u:'day',p:550000}
+  ]},
+  { label: '🗺 Tours', key: 'tour', items: [
+          {n:'Tour 1 Day',q:1,u:'pax',p:1570000},
+          {n:'Tour 2 Days',q:1,u:'pax',p:3450000},
+          {n:'Tour 2D1N',q:1,u:'pax',p:3580000},
+          {n:'Tour 3 Days',q:1,u:'pax',p:4910000},
+          {n:'Tour 3D2N',q:1,u:'pax',p:5150000},
+          {n:'Life in a Lolo Village',q:1,u:'pax',p:5850000}
+  ]},
+  { label: '🏠 Hotel Services', key: 'hs', subs: [
+      { label: 'Breakfast', items: [
+          {n:'Breakfast: Western Breakfast',q:1,u:'set',p:50000},
+          {n:'Breakfast: Pancake',q:1,u:'set',p:50000},
+          {n:'Breakfast: Roasted Chicken Breakfast Set',q:1,u:'set',p:70000},
+          {n:'Breakfast: Yogurt with Oats',q:1,u:'set',p:50000},
+          {n:'Breakfast: Pho — Cao Bang',q:1,u:'set',p:50000},
+          {n:'Breakfast: Steamed Rice Rolls',q:1,u:'set',p:50000},
+          {n:'Breakfast: Beef Noodle',q:1,u:'set',p:50000},
+          {n:'Breakfast: Bún Chả',q:1,u:'set',p:70000}
+      ]},
+      { label: 'Coffee & tea', items: [
+          {n:'Cà Phê Đen',q:1,u:'cup',p:30000},
+          {n:'Cà Phê Sữa',q:1,u:'cup',p:35000},
+          {n:'Bạc Xỉu',q:1,u:'cup',p:40000},
+          {n:'Egg Coffee',q:1,u:'cup',p:70000},
+          {n:'Espresso',q:1,u:'cup',p:40000},
+          {n:'Long Black',q:1,u:'cup',p:40000},
+          {n:'Iced Americano',q:1,u:'cup',p:40000},
+          {n:'Filter Coffee',q:1,u:'cup',p:65000},
+          {n:'Cappuccino',q:1,u:'cup',p:45000},
+          {n:'Flat White',q:1,u:'cup',p:45000},
+          {n:'Caffè Latte',q:1,u:'cup',p:50000},
+          {n:'Mocha',q:1,u:'cup',p:55000},
+          {n:'Black Tea',q:1,u:'cup',p:25000},
+          {n:'Chocolate Milk',q:1,u:'cup',p:50000},
+          {n:'Matcha Latte',q:1,u:'cup',p:50000}
+      ]},
+      { label: 'Drinks', items: [
+          {n:'Water 500ml',q:1,u:'bottle',p:10000},
+          {n:'Water 1.5L',q:1,u:'bottle',p:20000},
+          {n:'Coca-Cola',q:1,u:'can',p:15000},
+          {n:'Beer',q:1,u:'can',p:20000}
+      ]},
+      { label: 'Other services', items: [
+          {n:'Laundry (wash, dry & fold)',q:1,u:'kg',p:30000},
+          {n:'White shirt',q:1,u:'pc',p:8000},
+          {n:'Luggage storage (free)',q:1,u:'time',p:0}
+      ]}
+  ]},
+  { label: '🚕 Transport', key: 'transport', items: [
+          {n:'Taxi',q:1,u:'trip',p:0},
+          {n:'Easy Rider',q:1,u:'trip',p:0},
+          {n:'Bus Ticket',q:1,u:'ticket',p:0}
+  ]}
 ];
 
 // ── TABS ──
@@ -1084,9 +1170,9 @@ function buildHTML(target, sub, dep, rem) {
     <div class="inv-hdr">
       <div class="inv-logo">
         <div class="inv-logo-c"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></div>
-        <div><div class="inv-brand">SEN'S</div><div class="inv-brand-s">Homestay · Cao Bằng</div></div>
+        ${SEN_CS==='hoaan'?`<div><div class="inv-brand">HÒA AN</div><div class="inv-brand-s">Hotel · Cao Bằng</div></div>`:`<div><div class="inv-brand">SEN'S</div><div class="inv-brand-s">Homestay · Cao Bằng</div></div>`}
       </div>
-      <div class="inv-contact">+84 822 946 888<br>060 Tổ 7, Ngọc Xuân<br>TP. Cao Bằng</div>
+      <div class="inv-contact">${SEN_CS==='hoaan'?'+84 941 687 931<br>No. 381, De Tham 5, Thuc Phan Ward<br>Cao Bang Province':'+84 822 946 888<br>060 Tổ 7, Ngọc Xuân<br>TP. Cao Bằng'}</div>
     </div>
     <div class="inv-branch">Branch 1: <b>Sen's Homestay</b> · Branch 2: <b>Hoa An Home</b></div>
     <div class="inv-title-row">
@@ -1102,7 +1188,7 @@ function buildHTML(target, sub, dep, rem) {
     </table>
     ${totalHtml}
     ${depHtml}${noteHtml}
-    <div class="inv-stamp">Sen's Homestay · Thank you for staying with us ♥</div>
+    <div class="inv-stamp">${SEN_CS==='hoaan'?'Hòa An Hotel':"Sen's Homestay"} · Thank you for staying with us ♥</div>
   </div>`;
 }
 

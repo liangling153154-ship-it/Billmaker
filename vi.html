@@ -433,7 +433,7 @@ input:focus, select:focus, textarea:focus { border-color: #a9541f; }
 <div class="topbar">
   <div class="topbar-logo">
     <div class="topbar-icon"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></div>
-    <div class="topbar-name"><span>Sen's</span> Hóa Đơn</div>
+    <div class="topbar-name"><span id="tb-cs">Sen's</span> Hóa Đơn</div><script>document.getElementById('tb-cs').textContent=SEN_CS_INFO.short</script>
   </div>
   <div style="display:flex;gap:6px;align-items:center">
     <a href="index.html" style="background:none;border:1px solid rgba(255,255,255,.4);color:#fff;padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer;text-decoration:none;white-space:nowrap">☰ Menu</a>
@@ -601,7 +601,7 @@ input:focus, select:focus, textarea:focus { border-color: #a9541f; }
 <script>
 let items = [], idc = 0, curTab = 'form';
 
-const PRESET_GROUPS = [
+let PRESET_GROUPS = [
   {
     label: '🛏 Phòng', key: 'room',
     subs: [
@@ -695,6 +695,92 @@ const PRESET_GROUPS = [
       {n:'Vé xe khách',q:1,u:'vé',p:0},
     ]
   }
+];
+
+// Hệ thống Hòa An: phòng & bảng giá riêng (theo services.html của Hòa An)
+if (typeof SEN_CS !== 'undefined' && SEN_CS === 'hoaan') PRESET_GROUPS = [
+  { label: '🛏 Phòng', key: 'room', subs: [
+      { label: 'Chọn phòng', items: [
+          {lbl:'HA-101 Dorm',n:'Phòng HA-101 Dorm',q:1,u:'đêm',p:0},
+          {lbl:'HA-102',n:'Phòng HA-102',q:1,u:'đêm',p:0},
+          {lbl:'HA-201 Bamboo 1',n:'Phòng HA-201 Bamboo 1',q:1,u:'đêm',p:0},
+          {lbl:'HA-204 Rox 3',n:'Phòng HA-204 Rox 3',q:1,u:'đêm',p:0},
+          {lbl:'HA-301 Rox 1',n:'Phòng HA-301 Rox 1',q:1,u:'đêm',p:0},
+          {lbl:'HA-302 Rox 2',n:'Phòng HA-302 Rox 2',q:1,u:'đêm',p:0},
+          {lbl:'HA-304 Bamboo 2',n:'Phòng HA-304 Bamboo 2',q:1,u:'đêm',p:0},
+          {lbl:'HA-404 Azure 1',n:'Phòng HA-404 Azure 1',q:1,u:'đêm',p:0}
+      ]},
+      { label: 'Khác', items: [
+          {n:'Phòng (OTA)',q:1,u:'phòng',p:0},
+          {n:'Phòng (Đặt trực tiếp)',q:1,u:'phòng',p:0},
+          {n:'Nhận phòng sớm (có thuê xe)',q:1,u:'người',p:50000},
+          {n:'Nhận phòng sớm (không thuê xe)',q:1,u:'người',p:100000}
+      ]}
+  ]},
+  { label: '🏍 Thuê Xe Máy', key: 'bike', items: [
+          {n:'Honda Wave Alpha',q:1,u:'ngày',p:180000},
+          {n:'Honda Future',q:1,u:'ngày',p:250000},
+          {n:'Yamaha PG-1',q:1,u:'ngày',p:280000},
+          {n:'Honda Vision',q:1,u:'ngày',p:250000},
+          {n:'Honda Air Blade 125cc',q:1,u:'ngày',p:300000},
+          {n:'Honda Air Blade 160cc',q:1,u:'ngày',p:450000},
+          {n:'Honda Lead',q:1,u:'ngày',p:250000},
+          {n:'Honda Winner X',q:1,u:'ngày',p:280000},
+          {n:'Honda XR',q:1,u:'ngày',p:550000}
+  ]},
+  { label: '🗺 Tour Du Lịch', key: 'tour', items: [
+          {n:'Tour 1 Ngày',q:1,u:'người',p:1570000},
+          {n:'Tour 2 Ngày',q:1,u:'người',p:3450000},
+          {n:'Tour 2N1Đ',q:1,u:'người',p:3580000},
+          {n:'Tour 3 Ngày',q:1,u:'người',p:4910000},
+          {n:'Tour 3N2Đ',q:1,u:'người',p:5150000},
+          {n:'Sống cùng người Lô Lô',q:1,u:'người',p:5850000}
+  ]},
+  { label: '🏠 Dịch Vụ Khách Sạn', key: 'hs', subs: [
+      { label: 'Bữa sáng', items: [
+          {n:'Bữa sáng: Kiểu Tây',q:1,u:'suất',p:50000},
+          {n:'Bữa sáng: Bánh kếp (Pancake)',q:1,u:'suất',p:50000},
+          {n:'Bữa sáng: Set gà nướng',q:1,u:'suất',p:70000},
+          {n:'Bữa sáng: Yến mạch sữa chua',q:1,u:'suất',p:50000},
+          {n:'Bữa sáng: Phở Cao Bằng',q:1,u:'suất',p:50000},
+          {n:'Bữa sáng: Bánh cuốn Cao Bằng',q:1,u:'suất',p:50000},
+          {n:'Bữa sáng: Mì bò',q:1,u:'suất',p:50000},
+          {n:'Bữa sáng: Bún chả',q:1,u:'suất',p:70000}
+      ]},
+      { label: 'Cà phê & trà', items: [
+          {n:'Cà phê đen',q:1,u:'ly',p:30000},
+          {n:'Cà phê sữa',q:1,u:'ly',p:35000},
+          {n:'Bạc xỉu',q:1,u:'ly',p:40000},
+          {n:'Cà phê trứng',q:1,u:'ly',p:70000},
+          {n:'Espresso',q:1,u:'ly',p:40000},
+          {n:'Long Black',q:1,u:'ly',p:40000},
+          {n:'Americano đá',q:1,u:'ly',p:40000},
+          {n:'Cà phê phin lọc (Filter)',q:1,u:'ly',p:65000},
+          {n:'Cappuccino',q:1,u:'ly',p:45000},
+          {n:'Flat White',q:1,u:'ly',p:45000},
+          {n:'Latte',q:1,u:'ly',p:50000},
+          {n:'Mocha',q:1,u:'ly',p:55000},
+          {n:'Trà đen',q:1,u:'ly',p:25000},
+          {n:'Sữa sô-cô-la',q:1,u:'ly',p:50000},
+          {n:'Matcha latte',q:1,u:'ly',p:50000}
+      ]},
+      { label: 'Đồ uống', items: [
+          {n:'Nước lọc 500ml',q:1,u:'chai',p:10000},
+          {n:'Nước lọc 1.5L',q:1,u:'chai',p:20000},
+          {n:'Coca-Cola',q:1,u:'lon',p:15000},
+          {n:'Bia',q:1,u:'lon',p:20000}
+      ]},
+      { label: 'Dịch vụ khác', items: [
+          {n:'Giặt đồ (giặt, sấy, gấp)',q:1,u:'kg',p:30000},
+          {n:'Giặt áo trắng',q:1,u:'cái',p:8000},
+          {n:'Gửi hành lý (miễn phí)',q:1,u:'lần',p:0}
+      ]}
+  ]},
+  { label: '🚕 Di chuyển', key: 'transport', items: [
+          {n:'Taxi',q:1,u:'chuyến',p:0},
+          {n:'Easy Rider',q:1,u:'chuyến',p:0},
+          {n:'Vé xe khách',q:1,u:'vé',p:0}
+  ]}
 ];
 
 // ── TABS ──
@@ -940,7 +1026,7 @@ function clearCurrentDraft() {
   currentCreatedAt = new Date().toISOString();
   items=[]; idc=0;
   ['f-guest','f-phone','f-room','f-checkin','f-checkout','f-nights','f-deposit','f-note'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('f-qr').value='none';
+  document.getElementById('f-qr').value=SEN_CS==='hoaan'?'hoaan':'none';
   qrNoteDirty=false; document.getElementById('f-qr-note').value='';
   document.getElementById('f-qr-note-wrap').style.display='none';
   document.getElementById('f-inv-type').value='full';
@@ -991,6 +1077,7 @@ function init() {
     try { applyPayload(JSON.parse(draft)); }
     catch { items.push({id:++idc, n:'Phòng (OTA)', q:1, u:'phòng', p:0, disc:0, note:''}); drawForms(); render(); }
   } else {
+    if (SEN_CS==='hoaan') { document.getElementById('f-qr').value='hoaan'; }
     currentInvoiceId = newInvoiceId();
     currentCreatedAt = new Date().toISOString();
     items.push({id:++idc, n:'Phòng (OTA)', q:1, u:'phòng', p:0, disc:0, note:''});
@@ -1059,7 +1146,7 @@ const BUS_PLACES=[
   {lbl:'Vĩnh Niệm',      v:'Bến xe Vĩnh Niệm, Hải Phòng'},
   {lbl:'Tam Cốc',        v:'Bến xe Tam Cốc, Ninh Bình'},
 ];
-const BUS_DEFAULT={time:'20:30', from:'Bến xe Mỹ Đình, Hà Nội', to:"Sen's Homestay Cao Bằng"};
+const BUS_DEFAULT={time:'20:30', from:'Bến xe Mỹ Đình, Hà Nội', to:(typeof SEN_CS!=='undefined'&&SEN_CS==='hoaan')?'Hòa An Home Cao Bằng':"Sen's Homestay Cao Bằng"};
 function busChips(id,f) {
   return `<div class="bus-chips">${BUS_PLACES.map((p,i)=>`<span onclick="setBusPlace(${id},'${f}',${i})">${p.lbl}</span>`).join('')}</div>`;
 }
@@ -1341,7 +1428,7 @@ function buildHTML(target, sub, dep, rem) {
         <div class="inv-tot-usd">${fmtUSD(sub)}</div>
       </div>
     </div>
-    <div class="inv-dep-after"><div class="inv-dep-row" style="justify-content:center;text-align:center"><span>💵 Quý khách thanh toán trực tiếp cho nhà xe khi lên xe. Sen's chỉ giữ chỗ hộ, không thu tiền vé.</span></div></div>`;
+    <div class="inv-dep-after"><div class="inv-dep-row" style="justify-content:center;text-align:center"><span>💵 Quý khách thanh toán trực tiếp cho nhà xe khi lên xe. Chúng tôi chỉ giữ chỗ hộ, không thu tiền vé.</span></div></div>`;
   } else {
     totalHtml=`<div class="inv-total-box">
       <div class="inv-tot-lbl">Tổng</div>
@@ -1403,9 +1490,9 @@ function buildHTML(target, sub, dep, rem) {
     <div class="inv-hdr">
       <div class="inv-logo">
         <div class="inv-logo-c"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></div>
-        <div><div class="inv-brand">SEN'S</div><div class="inv-brand-s">Homestay · Cao Bằng</div></div>
+        ${SEN_CS==='hoaan'?`<div><div class="inv-brand">HÒA AN</div><div class="inv-brand-s">Hotel · Cao Bằng</div></div>`:`<div><div class="inv-brand">SEN'S</div><div class="inv-brand-s">Homestay · Cao Bằng</div></div>`}
       </div>
-      <div class="inv-contact">+84 822 946 888<br>060 Tổ 7, Ngọc Xuân<br>TP. Cao Bằng</div>
+      <div class="inv-contact">${SEN_CS==='hoaan'?'0941 687 931<br>Số 381, TDP Đề Thám 5, P. Thục Phán<br>TP. Cao Bằng':'+84 822 946 888<br>060 Tổ 7, Ngọc Xuân<br>TP. Cao Bằng'}</div>
     </div>
     <div class="inv-branch">Cơ sở 1: <b>Sen's Homestay</b> · Cơ sở 2: <b>Hòa An Home</b></div>
     <div class="inv-title-row">
@@ -1421,7 +1508,7 @@ function buildHTML(target, sub, dep, rem) {
     </table>
     ${totalHtml}
     ${depHtml}${noteHtml}${qrHtml}${policyHtml}
-    <div class="inv-stamp">Sen's Homestay · Cảm ơn quý khách ♥</div>
+    <div class="inv-stamp">${SEN_CS==='hoaan'?'Hòa An Hotel':"Sen's Homestay"} · Cảm ơn quý khách ♥</div>
   </div>`;
 }
 
@@ -1529,7 +1616,7 @@ function blankForm(){
   items=[];idc=0;
   ['f-guest','f-phone','f-room','f-checkin','f-checkout','f-nights','f-deposit','f-note']
     .forEach(id=>document.getElementById(id).value='');
-  document.getElementById('f-qr').value='none';
+  document.getElementById('f-qr').value=SEN_CS==='hoaan'?'hoaan':'none';
   qrNoteDirty=false; document.getElementById('f-qr-note').value='';
   document.getElementById('f-qr-note-wrap').style.display='none';
   document.getElementById('f-inv-type').value='full';
