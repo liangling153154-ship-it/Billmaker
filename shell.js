@@ -2,6 +2,10 @@
 // Điện thoại không đổi gì (mobile first): thanh này ẩn, các trang vẫn dùng nút ☰ Menu như cũ.
 (function () {
   const W = 232;
+  const CS = typeof SEN_CS !== 'undefined' ? SEN_CS : 'sen';
+  const INFO = typeof SEN_CS_INFO !== 'undefined' ? SEN_CS_INFO : {app: "Sen's Billmaker", logo: 'S', color: '#a9541f', dark: '#2b1d14', short: "Sen's"};
+  const OTHER = CS === 'sen' ? 'hoaan' : 'sen';
+  const OTHER_INFO = typeof SEN_CS_LIST !== 'undefined' ? SEN_CS_LIST[OTHER] : {short: 'Hòa An'};
   const css = `
 .sen-back{flex:none;width:38px;height:38px;border-radius:9px;border:1px solid currentColor;background:transparent;color:inherit;font:600 24px/1 system-ui,sans-serif;cursor:pointer;display:grid;place-items:center;padding:0 0 3px;opacity:.9}
 .sen-back:focus-visible{outline:2px solid currentColor;outline-offset:2px}
@@ -22,6 +26,8 @@
   #sen-side a.add:hover{background:#7e3c14}
   #sen-side .sw{width:10px;height:10px;border-radius:3px;flex:none}
   #sen-side a.i:focus-visible{outline:2px solid #fff;outline-offset:1px}
+  #sen-side .cs-sw{display:flex;align-items:center;gap:8px;margin:0 4px 10px;padding:8px 10px;border-radius:10px;border:1px dashed #ffffff55;background:transparent;color:#f2e6db;font:600 12.5px "Be Vietnam Pro",sans-serif;cursor:pointer;text-align:left}
+  #sen-side .cs-sw:hover{background:#ffffff14}
   /* thanh nút cố định dưới đáy chừa chỗ cho menu trái */
   .action-bar,.bar{left:${W}px !important}
   /* đã có menu trái: ẩn nút ☰ Menu trên đầu trang */
@@ -40,7 +46,8 @@
   }
   function draw() {
     const cur = current();
-    nav.innerHTML = '<a class="brand" href="index.html"><span class="logo" aria-hidden="true">S</span><b>Sen\'s Billmaker</b></a>' +
+    nav.innerHTML = '<a class="brand" href="index.html"><span class="logo" aria-hidden="true">' + INFO.logo + '</span><b>' + INFO.app + '</b></a>' +
+      '<button type="button" class="cs-sw" id="cs-sw">⇄ Chuyển sang ' + OTHER_INFO.short + '</button>' +
       '<a class="add" href="khach.html#new">＋ Thêm khách</a>' +
       items.map(([h, links]) => '<h6>' + h + '</h6>' + links.map(([href, label, color, cls]) =>
         `<a class="i ${cls || ''}" href="${href}"${href === cur ? ' aria-current="page"' : ''}${/^https?:/.test(href) ? ' target="_blank" rel="noopener"' : ''}><span class="sw" style="background:${color}" aria-hidden="true"></span>${label}</a>`).join('')).join('');
@@ -49,6 +56,30 @@
   const nav = document.createElement('nav'); nav.id = 'sen-side'; nav.setAttribute('aria-label', 'Menu chính');
   draw();
   document.body.prepend(nav);
+  nav.addEventListener('click', e => { if (e.target.closest('#cs-sw')) askSwitch(); });
+  function askSwitch() {
+    if (confirm('Chuyển sang hệ thống ' + OTHER_INFO.short + '?\nKhách, hóa đơn và sổ thu của hai cơ sở tách riêng.')) senSwitchCs(OTHER);
+  }
+  window.senAskSwitch = askSwitch;
+
+  // Hệ thống Hòa An: đổi màu khung + nhãn cố định trên đầu mọi trang để không nhầm với Sen's
+  if (CS !== 'sen') {
+    const t = document.createElement('style');
+    t.textContent = `#sen-side{background:${INFO.dark}}
+#sen-side .logo,#sen-side a.add,#sen-side a.i[aria-current="page"]{background:${INFO.color}}
+#sen-side a.i:hover{background:#ffffff14}
+.top,.topbar{background:${INFO.dark} !important;color:#fff !important}
+.cs-badge{flex:none;display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;background:${INFO.color};color:#fff;font:700 12px/1.2 "Be Vietnam Pro",system-ui,sans-serif;letter-spacing:.02em;border:0;cursor:pointer}`;
+    document.head.appendChild(t);
+    const head0 = document.querySelector('.top, .topbar');
+    if (head0) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'cs-badge';
+      b.title = 'Đang ở hệ thống ' + INFO.short + ' · bấm để chuyển';
+      b.textContent = '🏨 ' + INFO.short; b.onclick = askSwitch;
+      head0.appendChild(b);
+    }
+    document.title = document.title.replace(/Sen's/g, INFO.short);
+  }
 
   // nút Quay lại ở đầu mọi trang con (cả điện thoại lẫn máy tính)
   const page = location.pathname.split('/').pop() || 'index.html';

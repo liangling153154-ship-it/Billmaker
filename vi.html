@@ -743,8 +743,8 @@ function toggleGroup(key) {
 // ════════════════════════════════════════════════════════════
 //  SUPABASE SYNC
 // ════════════════════════════════════════════════════════════
-const LS_DRAFT  = 'sens_draft_vi_v1';
-const LS_INV_ID = 'sens_inv_id_vi_v1';
+const LS_DRAFT  = 'sens_draft_vi_v1'+(SEN_CS==='sen'?'':'_'+SEN_CS);
+const LS_INV_ID = 'sens_inv_id_vi_v1'+(SEN_CS==='sen'?'':'_'+SEN_CS);
 let currentInvoiceId = null;
 let currentCreatedAt = null;
 let saveTimer = null;
