@@ -58,6 +58,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font
 .rh{position:sticky;left:0;z-index:2;background:#efe3d6;border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;justify-content:center;font:700 15px var(--body)}
 .rh small{font:500 11.5px var(--body);color:var(--muted)}
 .rh.extra{background:#e9dccd}
+.rh.combo{background:#e4e0ef}
 .cell{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:5px;min-height:62px;display:flex;flex-direction:column;gap:5px;position:relative}
 .cell.today{border-color:#d9a47e;background:#fffaf4}
 .cell.past{background:#fbf8f4}
@@ -70,7 +71,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font
 .gn{display:flex;align-items:center;gap:6px;font-weight:700;font-size:13.5px;text-decoration:none;color:var(--ink);min-width:0}
 .gn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gr{display:flex;align-items:center;gap:4px;min-width:0;flex-wrap:wrap}
-.gr .gn{flex:1 1 80px}
+.gr .gn{flex:1 1 105px}
 .bd{flex:none;font:700 11px/1 var(--body);color:var(--c);background:var(--cb);border-radius:999px;padding:4px 6px;text-decoration:none;white-space:nowrap}
 .gc.stay{background:transparent;border:1px dashed #d8c7b6;opacity:.7}
 .gc.stay .gn{font-weight:500;font-size:12.5px;color:var(--muted)}
@@ -174,6 +175,8 @@ const TYPES={
   taxi:['🚕','Taxi',1], tour:['🚩','Tour / Guide',1], other:['🏠','Phòng nơi khác',1], money:['💰','Còn thu tiền',0],
   task:['📋','Checklist chưa xong',0], leave:['🧳','Trả phòng',1], stay:['🛏','Đang ở',0], manual:['📝','Việc thêm',1]};
 const ORDER=Object.keys(TYPES);
+// "Phạm Thị Phương Xuân" → "Phương Xuân" cho vừa ô
+const shortName=n=>{ const w=String(n||'').trim().split(/\s+/); return w.length>=3?w.slice(-2).join(' '):String(n||''); };
 // 500000 → 500k · 1250000 → 1,25tr
 const short=n=>{ n=Math.round(Number(n)||0); return n>=1e6?(Math.round(n/1e4)/100).toString().replace('.',',')+'tr':Math.round(n/1e3)+'k'; };
 
@@ -185,6 +188,7 @@ const ROOMSETS={
        ['HA-204','HA-204','Rox 3',/rox ?3/i],['HA-301','HA-301','Rox 1',/rox ?1\b/i],['HA-302','HA-302','Rox 2',/rox ?2/i],
        ['HA-304','HA-304','Bamboo 2',/bamboo ?2/i],['HA-404','HA-404','Azure 1',/azure/i]]};
 const HA=SEN_CS==='hoaan';
+const HOME=HA?/h[oò]a an/i:/\bsen/i;   // tên cơ sở mình trong "Nơi ở" của combo
 let ROOMS=(ROOMSETS[SEN_CS]||ROOMSETS.sen).map(([k,lbl,sub,re])=>({k,lbl,sub,re}));
 function ensureRoom(k,lbl){ if(!ROOMS.some(r=>r.k===k)) ROOMS.push({k,lbl,sub:'',re:null,extra:true}); return k; }
 // "Phòng 103", "103, 104", "Beige", "HA-201"… → danh sách mã phòng
@@ -231,7 +235,7 @@ async function load(){
   const prof=(cid,href)=>cid?'khach.html#'+encodeURIComponent(cid):href;
   const ev=[], stays={};   // stays[key] = [{room,ci,co}] để xếp việc của khách vào đúng dòng phòng
   const add=(o)=>{ if(isDate(o.day)) ev.push(o); };
-  const firstDay={};
+  const firstDay={}, comboCid=new Set();
   const note=(cid,day)=>{ if(cid&&isDate(day)&&day>=TODAY&&(!firstDay[cid]||day<firstDay[cid])) firstDay[cid]=day; };
 
   invs.forEach(i=>{
@@ -274,11 +278,26 @@ async function load(){
   combos.forEach(c=>{
     const b=B['combo:'+c.code], S=c.data||{}; if(!b) return;
     const name=who(c.customer_id,c.guest), key=keyOf(c.customer_id,name);
-    const base={key,who:name,cust:C[c.customer_id],href:prof(c.customer_id,'combo.html?open='+encodeURIComponent(c.code))};
+    const base={key,who:name,cust:C[c.customer_id],combo:true,href:prof(c.customer_id,'combo.html?open='+encodeURIComponent(c.code))};
     const x1=S.x1||{}, x2=S.x2||{}, go=isDate(x1.date)?x1.date:b.start_date, pax=c.pax?c.pax+' khách':'';
     add({...base,day:go,type:'bus',what:`Lên xe ${x1.time||''}`.trim(),meta:[`${x1.from||''} → ${x1.to||''}`,pax].join(' · '),ref:`combo:${c.code}:x1`});
     if(S.early&&S.early.on) add({...base,day:S.early.date,type:'early',what:'Nghỉ sớm khi xe tới',meta:`Combo ${c.code}${pax?' · '+pax:''}`,ref:`combo:${c.code}:early`});
-    (S.stays||[]).forEach((st,k)=>add({...base,day:st.in,type:'other',what:`Đêm ${k+1}: ${st.place||'?'}`,meta:`Combo ${c.code}`,ref:`combo:${c.code}:stay${k}`}));
+    const ckRoom=((C[c.customer_id]||{}).checklist||{}).room||{};
+    (S.stays||[]).forEach((st,k)=>{
+      if(!isDate(st.in)) return;
+      if(!HOME.test(st.place||'')){ add({...base,room:'combo',day:st.in,type:'other',what:`Đêm ${k+1}: ${st.place||'?'}`,meta:`Combo ${c.code}`,ref:`combo:${c.code}:stay${k}`}); return; }
+      // đêm ở chính cơ sở mình: số phòng lấy từ "Tên phòng" của đêm đó, không có thì từ checklist "Khóa phòng"
+      let rooms=roomsOf(st.room); if(!rooms.length) rooms=roomsOf(ckRoom.detail);
+      const out=isDate(st.out)&&st.out>st.in?st.out:addD(st.in,1), list=rooms.length?rooms:['combo'];
+      const rl=rooms.map(r=>(ROOMS.find(x=>x.k===r)||{}).lbl||r).join(', ');
+      (stays[key]=stays[key]||[]).push({room:list[0],ci:st.in,co:out});
+      const meta=[`Combo ${c.code}`,'đến '+dm(out),rooms.length>1?rl:'',rooms.length?'':'⚠ chưa ghi số phòng'].filter(Boolean).join(' · ');
+      list.forEach((r,j)=>{
+        add({...base,room:r,day:st.in,type:'arrive',what:'Nhận phòng',meta,ref:`combo:${c.code}:stay${k}${j?':'+r:''}`});
+        for(let d=addD(st.in,1); d<out; d=addD(d,1)) add({...base,room:r,day:d,type:'stay'});
+        add({...base,room:r,day:out,type:'leave',what:'Trả phòng',meta:`Combo ${c.code}`,ref:`combo:${c.code}:out${k}${j?':'+r:''}`});
+      });
+    });
     if(S.bike&&S.bike.qty>0){
       add({...base,day:S.bike.from,type:'bike',what:`Giao ${S.bike.qty} xe ${S.bike.type||''}`.trim(),meta:isDate(S.bike.to)?'Trả '+dm(S.bike.to):'',ref:`combo:${c.code}:bike`});
       if(isDate(S.bike.to)&&S.bike.to!==S.bike.from) add({...base,day:S.bike.to,type:'bike',what:`Nhận lại ${S.bike.qty} xe`,meta:`Combo ${c.code}`,ref:`combo:${c.code}:bike-back`});
@@ -286,7 +305,7 @@ async function load(){
     if(S.shower&&S.shower.on) add({...base,day:S.shower.date,type:'leave',what:'Tắm, chờ xe về',meta:`Combo ${c.code}`,ref:`combo:${c.code}:shower`});
     add({...base,day:x2.date,type:'bus',what:`Xe về ${x2.time||''}`.trim(),meta:`${x2.from||''} → ${x2.to||''}`,ref:`combo:${c.code}:x2`});
     if(Number(b.remaining)>0) add({...base,day:isDate(S.early&&S.early.date)?S.early.date:addD(go,1),type:'money',amt:b.remaining,what:`Còn thu ${money(b.remaining)}`,meta:`Combo ${c.code}`});
-    note(c.customer_id,go);
+    note(c.customer_id,go); if(c.customer_id) comboCid.add(c.customer_id);
   });
 
   // checklist chưa xong: nhắc vào ngày đầu tiên sắp tới của khách
@@ -294,20 +313,20 @@ async function load(){
   Object.entries(firstDay).forEach(([cid,day])=>{
     const ck=(C[cid]&&C[cid].checklist)||{};
     const left=STEPS.filter(k=>!(ck[k]&&(ck[k].st==='done'||ck[k].st==='skip'))).length;
-    if(left) add({key:'c:'+cid,who:who(cid),cust:C[cid],day,type:'task',left,what:`Checklist còn ${left} mục`,meta:'Mở hồ sơ để hoàn thành',href:'khach.html#'+encodeURIComponent(cid)});
+    if(left) add({key:'c:'+cid,who:who(cid),cust:C[cid],combo:comboCid.has(cid),day,type:'task',left,what:`Checklist còn ${left} mục`,meta:'Mở hồ sơ để hoàn thành',href:'khach.html#'+encodeURIComponent(cid)});
   });
 
   // việc chưa có phòng: nếu hôm đó khách đang ở phòng nào thì xếp vào dòng phòng đó
   ev.forEach(e=>{
     if(e.room!==undefined) return;
     const s=(stays[e.key]||[]).find(x=>x.ci<=e.day&&e.day<=x.co);
-    e.room=s?s.room:'';
+    e.room=s?s.room:(e.combo?'combo':'');
   });
 
   ST={}; MAN=[];
   tasks.forEach(t=>{
     if(t.ref) ST[t.ref]={id:t.id,status:t.status||''};
-    else if(isDate(t.day)){ if(t.room&&!ROOMS.some(r=>r.k===t.room)) ensureRoom(t.room,t.room.replace(/^x:/,''));
+    else if(isDate(t.day)){ if(t.room&&t.room!=='combo'&&!ROOMS.some(r=>r.k===t.room)) ensureRoom(t.room,t.room.replace(/^x:/,''));
       MAN.push(t); }
   });
   EV=ev;
@@ -340,7 +359,7 @@ function cellHTML(list){
     if(e0.type==='manual') return g.map(chipHTML).join('');
     const av=avatarHtml(e0.cust||WHO[e0.who]||{id:e0.key,name:e0.who},22);
     const bd=g.filter(e=>e.type==='money'||e.type==='task').map(e=>`<a class="bd t-${e.type}" href="${esc(e.href||'#')}" title="${esc(e.what+(e.meta?' · '+e.meta:''))}">${e.type==='money'?'💰 '+short(e.amt):'📋 '+e.left}</a>`).join('');
-    const name=`<div class="gr"><a class="gn" href="${esc(e0.href||'#')}">${av}<span>${esc(e0.who)}</span></a>${bd}</div>`;
+    const name=`<div class="gr"><a class="gn" href="${esc(e0.href||'#')}" title="${esc(e0.who)}">${av}<span>${esc(shortName(e0.who))}</span></a>${bd}</div>`;
     const real=g.filter(e=>!['stay','money','task'].includes(e.type));
     if(!real.length) return `<div class="gc${g.every(e=>e.type==='stay')?' stay':''}"${g.every(e=>e.type==='stay')?' title="Đang ở"':''}>${name}</div>`;
     return `<div class="gc">${name}${real.map(chipHTML).join('')}</div>`;
@@ -371,7 +390,7 @@ function draw(){
     `<div class="cell${d===TODAY?' today':d<TODAY?' past':''}">${cellHTML(cell[d+'|'+k]||[])}${TASKS_OK?`<button type="button" class="add" data-add-day="${d}" data-add-room="${esc(k)}" aria-label="Thêm việc ${dm(d)} ${esc(lbl)}">＋</button>`:''}</div>`).join('');
   $('cal').className='grid'+(view==='day'?' one':'');
   $('cal').style.setProperty('--n',days.length);
-  $('cal').innerHTML=head+rows.map(r=>row(r.k,r.lbl,r.sub)).join('')+row('','Công việc thêm','Không ở phòng','extra');
+  $('cal').innerHTML=head+rows.map(r=>row(r.k,r.lbl,r.sub)).join('')+row('combo','Khách combo','Chưa xếp phòng, đi tour','extra combo')+row('','Công việc thêm','Khách lẻ, việc ghi tay','extra');
   $('legendTypes').innerHTML='Loại việc: '+['arrive','early','bike','bus','taxi','tour','other','money','task','manual']
     .map(t=>`<span class="lc t-${t}">${TYPES[t][0]} ${TYPES[t][1]}</span>`).join('');
 }
@@ -403,7 +422,7 @@ function openDlg(t){
   $('dlgTitle').textContent=editing?'Sửa việc':'Thêm việc';
   $('fTitle').value=t&&t.title||'';
   $('fDay').value=t&&t.day||(view==='day'?anchor:(visibleDays().includes(TODAY)?TODAY:visibleDays()[0]));
-  $('fRoom').innerHTML=`<option value="">Công việc thêm (không ở phòng)</option>`+ROOMS.map(r=>`<option value="${esc(r.k)}">${esc(r.lbl)}${r.sub?' · '+esc(r.sub):''}</option>`).join('');
+  $('fRoom').innerHTML=`<option value="">Công việc thêm</option><option value="combo">Khách combo</option>`+ROOMS.map(r=>`<option value="${esc(r.k)}">${esc(r.lbl)}${r.sub?' · '+esc(r.sub):''}</option>`).join('');
   $('fRoom').value=t&&t.room||'';
   $('fDel').hidden=!editing;
   $('dlg').showModal(); $('fTitle').focus();
