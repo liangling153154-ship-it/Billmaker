@@ -30,7 +30,7 @@ function senSwitchCs(cs) {
   // trang đang soạn dở thuộc cơ sở cũ → về trang chủ của cơ sở mới cho chắc
   location.href = 'index.html?cs=' + cs;
 }
-const SEN_BRANCHED = new Set(['customers', 'invoices', 'combos', 'bills']);
+const SEN_BRANCHED = new Set(['customers', 'invoices', 'combos', 'bills', 'tasks']);
 function senScope(path, method, body) {
   const tbl = path.split('?')[0];
   if (tbl === 'rpc/add_customer' && body && typeof body === 'object') return [path, {...body, p_branch: SEN_CS}];
@@ -82,6 +82,8 @@ function senSavedText(path, b, data) {
     : b.status === 'final' && Object.keys(b).length === 1 ? 'Đã đánh dấu đã gửi' : 'Đã lưu hóa đơn' + (b.guest ? ' · ' + b.guest : '');
   if (/^combos/.test(path)) return 'customer_id' in b && Object.keys(b).length === 1 ? 'Đã gắn combo vào khách'
     : b.status === 'final' && Object.keys(b).length === 1 ? 'Đã đánh dấu đã gửi' : 'Đã lưu combo' + (b.code ? ' · ' + b.code : '');
+  if (/^tasks/.test(path)) return 'title' in b && !('ref' in b) ? 'Đã lưu việc' + (b.title ? ' · ' + b.title : '')
+    : b.status === 'done' ? 'Đã hoàn thành' : b.status === 'doing' ? 'Đang xử lý' : 'Đã đổi về chưa làm';
   if (/^payments/.test(path)) return (b.amount < 0 ? 'Đã ghi hoàn ' : 'Đã ghi thu ') + Math.abs(Number(b.amount) || 0).toLocaleString('vi-VN') + 'đ';
   if (/^customers/.test(path)) return 'checklist' in b ? 'Đã lưu checklist' : 'segment' in b ? 'Đã lưu nhóm khách' : 'Đã lưu hồ sơ khách';
   return 'Đã lưu';

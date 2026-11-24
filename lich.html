@@ -10,76 +10,109 @@
 <script src="animals.js"></script>
 <script src="shell.js" defer></script>
 <style>
-/* Lịch công việc: mỗi ngày khách đến/đi, xe chạy, xe máy, nghỉ sớm, tiền còn thu, checklist chưa xong.
-   Tất cả tính từ hóa đơn + hồ sơ khách, không có dữ liệu riêng. */
+/* Lịch công việc dạng bảng: mỗi dòng một phòng, mỗi cột một ngày, dòng cuối "Công việc thêm"
+   cho khách không ở phòng và việc ghi tay. Việc tự sinh từ hóa đơn + combo + hồ sơ khách;
+   trạng thái tick và việc ghi tay lưu ở bảng tasks (supabase/009_lich_cong_viec.sql). */
 :root{--bg:#f6efe8;--paper:#fffdfa;--ink:#2b1d14;--muted:#6e5a4b;--line:#e6d6c6;--brown:#a9541f;--brown-d:#7e3c14;--soft:#f3e2d3;
   --navy:#1e2d40;--display:"Lora",Georgia,serif;--body:"Be Vietnam Pro",system-ui,sans-serif}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45}
-.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;background:var(--paper);border-bottom:1px solid var(--line);
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;background:var(--paper);border-bottom:1px solid var(--line);
   padding:max(10px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left))}
 .top a{color:var(--ink);text-decoration:none;font:600 13px var(--body);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
 .top h1{margin:0;font:700 19px var(--display);flex:1}
-.wrap{max-width:900px;margin:0 auto;padding:12px max(14px,env(safe-area-inset-right)) 40px max(14px,env(safe-area-inset-left))}
+.wrap{max-width:1500px;margin:0 auto;padding:12px max(14px,env(safe-area-inset-right)) 40px max(14px,env(safe-area-inset-left))}
 .bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
 .seg{display:inline-flex;background:#ebddcf;border-radius:10px;padding:3px}
 .seg button{border:0;background:transparent;font:600 13px var(--body);color:var(--ink);padding:8px 14px;border-radius:8px;cursor:pointer;min-height:38px}
 .seg button[aria-pressed="true"]{background:var(--brown);color:#fff}
-.nav button{border:1px solid var(--line);background:var(--paper);color:var(--ink);font:600 13px var(--body);border-radius:9px;min-width:40px;min-height:38px;cursor:pointer;padding:0 10px}
+.nav{display:inline-flex;gap:4px}
+.nav button,.addbtn{border:1px solid var(--line);background:var(--paper);color:var(--ink);font:600 13px var(--body);border-radius:9px;min-width:40px;min-height:38px;cursor:pointer;padding:0 10px}
+.addbtn{background:var(--brown);border-color:var(--brown);color:#fff;padding:0 14px}
 .title{font:700 16px var(--display);margin-left:auto}
-.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:2px 0 12px}
-.legend span{display:inline-flex;align-items:center;gap:5px}
-.dot{width:10px;height:10px;border-radius:3px;display:inline-block;flex:none}
-.t-arrive{--c:#2e7d32}.t-leave{--c:#c26a00}.t-stay{--c:#8d7b6c}.t-bus{--c:#1e2d40}.t-bike{--c:#a9541f}.t-early{--c:#6a3fb0}.t-money{--c:#b3261e}.t-task{--c:#b26a00}
-.dot{background:var(--c)}
-/* week */
-.day{background:var(--paper);border:1px solid var(--line);border-radius:12px;margin-bottom:8px;overflow:hidden}
-.day.today{border-color:var(--brown);box-shadow:0 0 0 2px #a9541f33}
-.dh{display:flex;align-items:baseline;gap:8px;padding:8px 12px;background:#f8efe6;font-weight:700}
-.dh small{font-weight:500;color:var(--muted)}
-.day.today .dh{background:var(--brown);color:#fff}.day.today .dh small{color:#ffe2c2}
-.ev{display:flex;gap:10px;align-items:flex-start;padding:8px 12px;border-top:1px solid #f1e6da;text-decoration:none;color:var(--ink)}
-.ev .bar-c{width:4px;align-self:stretch;border-radius:2px;background:var(--c);flex:none}
-.ev .w{flex:1;min-width:0}
-.ev b{font-size:14px}
-.ev .m{font-size:12.5px;color:var(--muted)}
-.empty{padding:8px 12px;font-size:13px;color:var(--muted)}
-/* month */
-.mgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
-.mh{font-size:11.5px;font-weight:700;color:var(--muted);text-align:center;padding:2px 0}
-.mc{background:var(--paper);border:1px solid var(--line);border-radius:8px;min-height:64px;padding:4px;cursor:pointer;display:flex;flex-direction:column;gap:3px;font:inherit;color:inherit;text-align:left}
-.mc.out{opacity:.45}
-.mc.today{border-color:var(--brown);box-shadow:0 0 0 2px #a9541f33}
-.mc.sel{background:var(--soft);border-color:var(--brown)}
-.mc .n{font-size:12.5px;font-weight:700}
-.mc .dots{display:flex;flex-wrap:wrap;gap:2px}
-.mc .cnt{font-size:10.5px;color:var(--muted)}
-@media (min-width:640px){.mc{min-height:92px}.mc .lbl{display:block}}
-.mc .lbl{display:none;font-size:11px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#detail{margin-top:12px}
-.g{border-top:1px solid #f1e6da}
-.g summary{list-style:none;display:flex;align-items:center;gap:10px;padding:11px 12px;cursor:pointer;min-height:48px}
-.g summary::-webkit-details-marker{display:none}
-.g summary .w{flex:1;display:flex;flex-direction:column;gap:3px}
-.g .gd{display:flex;gap:3px}
-.g .gc{font-size:12.5px;color:var(--muted);white-space:nowrap}
-.g .chev{font-size:18px;color:var(--muted);transition:transform .15s}
-.g[open] .chev{transform:rotate(90deg)}
-.g[open] summary{background:#fbf5ef}
-.g .ev{padding-left:24px}
 .err{color:#b3261e}
+.note{background:#fff4e5;border:1px solid #f0c98a;border-radius:10px;padding:8px 12px;font-size:13px;margin-bottom:10px}
+
+/* ô tổng */
 .sum{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:12px}
-.sum div{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px;font-size:12px;color:var(--muted)}
-.sum b{display:block;font-size:18px;color:var(--ink)}
-/* ── máy tính (≥1024px): tuần thành 7 cột, tháng ô lớn hơn ── */
-@media (min-width:1024px){
-  .wrap{max-width:1400px}
-  #cal.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;align-items:start}
-  #cal.week .day{margin:0}
-  .mc{min-height:110px}
-  .sum{max-width:720px}
-}
+.sum div{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:7px 9px;font-size:12px;color:var(--muted);display:flex;flex-direction:column}
+.sum b{font-size:19px;color:var(--ink);line-height:1.2}
+.sum .s-done{background:#eef6ee;border-color:#cfe3cf}
+.sum .s-todo{background:#fff6ec;border-color:#f1d9bd}
+@media (min-width:700px){.sum{grid-template-columns:repeat(8,minmax(0,1fr))}}
+
+/* loại việc: màu chủ đạo */
+.t-arrive{--c:#2e7d32;--cb:#e8f3e8}.t-leave{--c:#c26a00;--cb:#fdf0e1}.t-stay{--c:#8d7b6c;--cb:#f3ede7}
+.t-early{--c:#6a3fb0;--cb:#f0eaf8}.t-bike{--c:#3f7d3a;--cb:#e9f3e6}.t-bus{--c:#1f5fa8;--cb:#e6effa}
+.t-taxi{--c:#9a6b00;--cb:#fdf3d8}.t-tour{--c:#5b3fa0;--cb:#eeeaf8}.t-other{--c:#7a5a3a;--cb:#f3ebe2}
+.t-money{--c:#b3261e;--cb:#fbe9e7}.t-task{--c:#b26a00;--cb:#fff1de}.t-manual{--c:#a9541f;--cb:#f8eadf}
+
+/* bảng */
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px}
+.grid{display:grid;grid-template-columns:var(--rw,92px) repeat(var(--n),minmax(var(--cw,150px),1fr));gap:4px;min-width:min-content}
+.gh{position:sticky;top:0;background:#f1e4d7;border-radius:10px;padding:8px 6px;text-align:center;font:700 14px var(--display)}
+.gh small{display:block;font:500 11px var(--body);color:var(--muted)}
+.gh.today{background:var(--brown);color:#fff}.gh.today small{color:#ffe2c2}
+.corner{left:0;z-index:3;text-align:left;font:600 12.5px var(--body);color:var(--muted);display:flex;align-items:center;padding-left:10px}
+.rh{position:sticky;left:0;z-index:2;background:#efe3d6;border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;justify-content:center;font:700 15px var(--body)}
+.rh small{font:500 11.5px var(--body);color:var(--muted)}
+.rh.extra{background:#e9dccd}
+.cell{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:5px;min-height:62px;display:flex;flex-direction:column;gap:5px;position:relative}
+.cell.today{border-color:#d9a47e;background:#fffaf4}
+.cell.past{background:#fbf8f4}
+.cell .add{position:absolute;right:4px;bottom:4px;width:26px;height:26px;border-radius:7px;border:1px dashed var(--line);background:transparent;color:var(--muted);font:600 16px/1 var(--body);cursor:pointer;opacity:0}
+.cell:hover .add,.cell .add:focus-visible{opacity:1}
+@media (hover:none){.cell .add{opacity:.55}}
+
+/* thẻ khách trong ô */
+.gc{border-radius:9px;background:#fbf6f1;padding:5px 6px;display:flex;flex-direction:column;gap:4px}
+.gn{display:flex;align-items:center;gap:6px;font-weight:700;font-size:13.5px;text-decoration:none;color:var(--ink);min-width:0}
+.gn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gr{display:flex;align-items:center;gap:4px;min-width:0;flex-wrap:wrap}
+.gr .gn{flex:1 1 80px}
+.bd{flex:none;font:700 11px/1 var(--body);color:var(--c);background:var(--cb);border-radius:999px;padding:4px 6px;text-decoration:none;white-space:nowrap}
+.gc.stay{background:transparent;border:1px dashed #d8c7b6;opacity:.7}
+.gc.stay .gn{font-weight:500;font-size:12.5px;color:var(--muted)}
+.chip{display:flex;align-items:center;gap:6px;background:var(--cb);border-radius:8px;padding:4px 4px 4px 6px;min-height:34px}
+.chip .ic{flex:none;font-size:15px;line-height:1}
+.chip .tx{flex:1;min-width:0;color:var(--ink);text-decoration:none;font-size:12.5px;line-height:1.25;cursor:pointer;background:none;border:0;padding:0;text-align:left;font-family:inherit}
+.chip .tx b{display:block;font-weight:600;color:var(--c)}
+.chip .tx small{display:block;color:var(--muted);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip.st-done .tx b{text-decoration:line-through;opacity:.75}
+.tk{flex:none;width:28px;height:28px;border-radius:7px;border:2px solid #c9b5a2;background:#fff;cursor:pointer;display:grid;place-items:center;font:700 15px/1 var(--body);color:#fff;padding:0}
+.tk.doing{background:#f5b74a;border-color:#e0a030}
+.tk.done{background:#3a8a3e;border-color:#3a8a3e}
+.tk:disabled{opacity:.35;cursor:not-allowed}
+.chip.late .tk:not(.done){border-color:#d9534f;box-shadow:0 0 0 2px #d9534f33}
+
+/* chú thích */
+.legend{display:flex;gap:8px 16px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--muted);margin-top:14px}
+.legend .grp{display:flex;gap:6px 10px;flex-wrap:wrap;align-items:center}
+.legend .lc{display:inline-flex;align-items:center;gap:4px;background:var(--cb);color:var(--c);border-radius:999px;padding:3px 9px;font-weight:600}
+.legend .tk{width:18px;height:18px;border-width:2px;font-size:11px;cursor:default}
+
+/* hộp thêm / sửa việc */
+dialog{border:0;border-radius:14px;padding:0;width:min(420px,calc(100vw - 24px));box-shadow:0 20px 60px #0004}
+dialog::backdrop{background:#2b1d1466}
+dialog form{padding:16px;display:flex;flex-direction:column;gap:10px}
+dialog h2{margin:0;font:700 17px var(--display)}
+dialog label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600}
+dialog input,dialog select,dialog textarea{font:15px var(--body);padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink);width:100%}
+dialog textarea{min-height:70px;resize:vertical}
+dialog .row{display:flex;gap:8px}
+dialog .row>*{flex:1}
+dialog .btns{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+dialog .btns button{font:600 14px var(--body);border-radius:9px;padding:9px 14px;cursor:pointer;border:1px solid var(--line);background:var(--paper);color:var(--ink)}
+dialog .btns .pri{background:var(--brown);border-color:var(--brown);color:#fff}
+dialog .btns .del{margin-right:auto;color:#b3261e;border-color:#efc2bd}
+
+/* điện thoại: xem Ngày, bảng 2 cột vừa màn hình */
+.grid.one{--rw:74px;--cw:0px}
+@media (min-width:1024px){.grid{--rw:96px;--cw:118px}
+  .grid:not(.one) .chip{gap:4px;padding:3px 3px 3px 5px}
+  .grid:not(.one) .chip .ic{font-size:13px}
+  .grid:not(.one) .tk{width:24px;height:24px;font-size:13px}}
 </style>
 </head>
 <body>
@@ -87,22 +120,42 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font
 <main class="wrap">
   <div class="bar">
     <div class="seg" role="group" aria-label="Chế độ xem">
-      <button type="button" data-view="week" aria-pressed="true">Tuần</button>
-      <button type="button" data-view="month" aria-pressed="false">Tháng</button>
+      <button type="button" data-view="week" aria-pressed="false">Tuần</button>
+      <button type="button" data-view="day" aria-pressed="false">Ngày</button>
     </div>
-    <div class="nav"><button type="button" id="prev" aria-label="Trước">‹</button> <button type="button" id="today">Hôm nay</button> <button type="button" id="next" aria-label="Sau">›</button></div>
+    <div class="nav"><button type="button" id="prev" aria-label="Trước">‹</button><button type="button" id="today">Hôm nay</button><button type="button" id="next" aria-label="Sau">›</button></div>
+    <button type="button" class="addbtn" id="addTask">＋ Thêm việc</button>
     <span class="title" id="title"></span>
   </div>
-  <div class="legend">
-    <span class="t-arrive"><i class="dot"></i>Khách đến</span><span class="t-leave"><i class="dot"></i>Khách đi</span>
-    <span class="t-stay"><i class="dot"></i>Đang ở</span><span class="t-bus"><i class="dot"></i>Xe khách</span>
-    <span class="t-bike"><i class="dot"></i>Xe máy</span><span class="t-early"><i class="dot"></i>Nghỉ sớm</span>
-    <span class="t-money"><i class="dot"></i>Còn thu tiền</span><span class="t-task"><i class="dot"></i>Checklist chưa xong</span>
-  </div>
+  <div id="notice"></div>
   <div class="sum" id="sum"></div>
-  <div id="cal"><p class="empty">⏳ Đang tải…</p></div>
-  <div id="detail"></div>
+  <div class="scroll"><div id="cal"><p>⏳ Đang tải…</p></div></div>
+  <div class="legend">
+    <span class="grp">Trạng thái (bấm ô để đổi):
+      <span><button type="button" class="tk" tabindex="-1" aria-hidden="true"></button> Chưa làm</span>
+      <span><button type="button" class="tk doing" tabindex="-1" aria-hidden="true">…</button> Đang xử lý</span>
+      <span><button type="button" class="tk done" tabindex="-1" aria-hidden="true">✓</button> Hoàn thành</span>
+    </span>
+    <span class="grp" id="legendTypes"></span>
+  </div>
 </main>
+
+<dialog id="dlg">
+  <form method="dialog" id="dlgForm">
+    <h2 id="dlgTitle">Thêm việc</h2>
+    <label>Việc cần làm<textarea id="fTitle" required placeholder="Ví dụ: Đặt taxi sân bay cho nhóm 4 khách"></textarea></label>
+    <div class="row">
+      <label>Ngày<input type="date" id="fDay" required></label>
+      <label>Dòng<select id="fRoom"></select></label>
+    </div>
+    <div class="btns">
+      <button type="button" class="del" id="fDel" hidden>Xoá</button>
+      <button type="button" id="fCancel">Huỷ</button>
+      <button type="submit" class="pri" id="fSave">Lưu</button>
+    </div>
+  </form>
+</dialog>
+
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -113,117 +166,277 @@ const addD=(s,n)=>{const d=D(s);d.setDate(d.getDate()+n);return iso(d);};
 const isDate=s=>/^\d{4}-\d{2}-\d{2}$/.test(s||'');
 const DOW=['CN','T2','T3','T4','T5','T6','T7'];
 const dm=s=>{const[,m,d]=s.split('-');return d+'/'+m;};
-const ORDER=['arrive','bus','early','money','task','bike','stay','leave'];
 const TODAY=iso(new Date());
-let WHO={};   // tên khách → hồ sơ (để vẽ icon con vật)
-let view='week', anchor=TODAY, events={}, sel=null;
 
-function add(day,type,title,meta,href){ if(!isDate(day)) return; const k=title.indexOf(' · '); (events[day]=events[day]||[]).push({type,who:k>0?title.slice(0,k):title,what:k>0?title.slice(k+3):title,title,meta,href}); }
+// loại việc: biểu tượng, nhãn, thứ tự trong ô; tick = có ô trạng thái
+const TYPES={
+  arrive:['🛎','Nhận phòng',1], early:['⏰','Check-in sớm',1], bike:['🏍','Thuê xe',1], bus:['🚌','Vé xe',1],
+  taxi:['🚕','Taxi',1], tour:['🚩','Tour / Guide',1], other:['🏠','Phòng nơi khác',1], money:['💰','Còn thu tiền',0],
+  task:['📋','Checklist chưa xong',0], leave:['🧳','Trả phòng',1], stay:['🛏','Đang ở',0], manual:['📝','Việc thêm',1]};
+const ORDER=Object.keys(TYPES);
+// 500000 → 500k · 1250000 → 1,25tr
+const short=n=>{ n=Math.round(Number(n)||0); return n>=1e6?(Math.round(n/1e4)/100).toString().replace('.',',')+'tr':Math.round(n/1e3)+'k'; };
 
-// ── build every task from bills, invoices, combos and guest checklists ──
+// ── phòng của từng cơ sở ──
+const ROOMSETS={
+  sen:[['101','P101','Beige',/beige/i],['102','P102','Family',/no view/i],['103','P103','Deluxe',/deluxe/i],
+       ['104','P104','Family River',/river/i],['105','P105','Pine',/pine/i],['106','P106','Sunset',/sunset/i]],
+  hoaan:[['HA-101','HA-101','Dorm',/dorm/i],['HA-102','HA-102','',null],['HA-201','HA-201','Bamboo 1',/bamboo ?1\b/i],
+       ['HA-204','HA-204','Rox 3',/rox ?3/i],['HA-301','HA-301','Rox 1',/rox ?1\b/i],['HA-302','HA-302','Rox 2',/rox ?2/i],
+       ['HA-304','HA-304','Bamboo 2',/bamboo ?2/i],['HA-404','HA-404','Azure 1',/azure/i]]};
+const HA=SEN_CS==='hoaan';
+let ROOMS=(ROOMSETS[SEN_CS]||ROOMSETS.sen).map(([k,lbl,sub,re])=>({k,lbl,sub,re}));
+function ensureRoom(k,lbl){ if(!ROOMS.some(r=>r.k===k)) ROOMS.push({k,lbl,sub:'',re:null,extra:true}); return k; }
+// "Phòng 103", "103, 104", "Beige", "HA-201"… → danh sách mã phòng
+function roomsOf(text){
+  const s=String(text||''), out=[], push=k=>{ if(k&&!out.includes(k)) out.push(k); };
+  for(const m of s.matchAll(/(^|\D)(\d{3})(?!\d)/g)){ const n=m[2]; push(ensureRoom(HA?'HA-'+n:n, HA?'HA-'+n:'P'+n)); }
+  if(!out.length) ROOMS.forEach(r=>{ if(r.re&&r.re.test(s)) push(r.k); });
+  return out;
+}
+// tên món trong hóa đơn → loại việc (mặc định đặt vào ngày nhận phòng)
+function itemKind(n){
+  if(/nhận phòng sớm|early check/i.test(n)) return 'early';
+  if(/taxi/i.test(n)) return 'taxi';
+  if(/tour|lô lô|easy rider|guide|hướng dẫn/i.test(n)) return 'tour';
+  if(/wave|future|pg-?1|vision|air ?blade|\blead\b|winner|\bxr\b|xe máy|motor|moto/i.test(n)) return 'bike';
+  return null;
+}
+
+let view=(()=>{ try{ return localStorage.getItem('lich_view')||null; }catch(e){ return null; } })()
+  || (matchMedia('(max-width:700px)').matches?'day':'week');
+if(!['week','day'].includes(view)) view='week';
+let anchor=TODAY;
+let EV=[];          // mọi việc: {day,key,who,cust,type,what,meta,href,ref,room,mid}
+let ST={};          // ref → {id,status} trạng thái việc tự sinh
+let MAN=[];         // việc ghi tay
+let TASKS_OK=true;  // bảng tasks đã có trên Supabase chưa
+let WHO={};
+
+// ── dựng mọi việc từ hóa đơn, combo, hồ sơ khách ──
 async function load(){
   const [bills,invs,combos,custs]=await Promise.all([
     sb('bills?select=*&state=neq.cancelled&limit=1000'),
     sb('invoices?select=id,invoice_type,room,checkin,checkout,guest,customer_id,data&deleted_at=is.null&cancelled_at=is.null&limit=1000'),
     sb('combos?select=code,guest,customer_id,pax,data&deleted_at=is.null&cancelled_at=is.null&limit=1000'),
     sb('customers?select=*&deleted_at=is.null&limit=1000')]);
+  let tasks=[];
+  try{ tasks=await sb('tasks?select=*&deleted_at=is.null&order=created_at.asc&limit=5000'); }
+  catch(e){ TASKS_OK=false; console.warn('[tasks]',e); }
+
   const B={}; bills.forEach(b=>B[b.kind+':'+b.ref]=b);
   const C={}; custs.forEach(c=>C[c.id]=c);
   const who=(cid,g)=>{ const n=(C[cid]&&C[cid].name)||g||'(chưa có tên)'; if(C[cid]) WHO[n]=C[cid]; return n; };
+  const keyOf=(cid,name)=>cid?'c:'+cid:'g:'+name;
   const prof=(cid,href)=>cid?'khach.html#'+encodeURIComponent(cid):href;
-  const firstDay={};   // guest → earliest arrival, for checklist reminders
+  const ev=[], stays={};   // stays[key] = [{room,ci,co}] để xếp việc của khách vào đúng dòng phòng
+  const add=(o)=>{ if(isDate(o.day)) ev.push(o); };
+  const firstDay={};
   const note=(cid,day)=>{ if(cid&&isDate(day)&&day>=TODAY&&(!firstDay[cid]||day<firstDay[cid])) firstDay[cid]=day; };
 
   invs.forEach(i=>{
     const b=B['invoice:'+i.id]; if(!b) return;
-    const name=who(i.customer_id,i.guest), lang=(i.data&&i.data.lang)==='en'?'en':'vi';
+    const name=who(i.customer_id,i.guest), key=keyOf(i.customer_id,name), cust=C[i.customer_id];
+    const lang=(i.data&&i.data.lang)==='en'?'en':'vi';
     const href=prof(i.customer_id,(lang==='en'?'en.html':'vi.html')+'?open='+encodeURIComponent(i.id));
-    if(i.invoice_type==='bus'){
-      const legs=((i.data&&i.data.items)||[]).map(it=>it.bus).filter(x=>x&&isDate(x.date)).sort((a,b)=>a.date<b.date?-1:1);
-      legs.forEach(x=>{ add(x.date,'bus',`${name} · xe ${esc(x.time||'')}`,`${x.from||''} → ${x.to||''}${x.co?' · '+x.co:''}`,href); note(i.customer_id,x.date); });
-      if(legs.length&&Number(b.remaining)>0&&Number(b.total)>0) add(legs[0].date,'money',`${name} · còn thu ${money(b.remaining)}`,'Vé xe đặt hộ',href);
+    const base={key,who:name,cust,href};
+    const items=(i.data&&i.data.items)||[];
+    const legs=items.map(it=>it.bus).filter(x=>x&&isDate(x.date)).sort((a,b)=>a.date<b.date?-1:1);
+    legs.forEach(x=>{ add({...base,day:x.date,type:'bus',what:`Vé xe ${x.time||''}`.trim(),meta:`${x.from||''} → ${x.to||''}${x.co?' · '+x.co:''}`,
+      ref:`inv:${i.id}:bus:${x.date}:${x.time||''}:${x.from||''}`}); note(i.customer_id,x.date); });
+    const ci=i.checkin, co=isDate(i.checkout)?i.checkout:ci;
+    if(i.invoice_type==='bus'||!isDate(ci)){
+      if(legs.length&&Number(b.remaining)>0&&Number(b.total)>0) add({...base,day:legs[0].date,type:'money',amt:b.remaining,what:`Còn thu ${money(b.remaining)}`,meta:'Vé xe đặt hộ'});
       return;
     }
-    const ci=i.checkin, co=i.checkout||i.checkin;
-    if(!isDate(ci)) return;
-    add(ci,'arrive',`${name} · nhận phòng`,`Phòng ${i.room||'?'}${co&&co!==ci?' · đến '+dm(co):''}`,href);
-    for(let d=addD(ci,1); isDate(co)&&d<co; d=addD(d,1)) add(d,'stay',`${name} · đang ở`,`Phòng ${i.room||'?'}`,href);
-    if(isDate(co)&&co!==ci) add(co,'leave',`${name} · trả phòng`,`Phòng ${i.room||'?'}`,href);
-    if(Number(b.remaining)>0&&Number(b.total)>0) add(ci,'money',`${name} · còn thu ${money(b.remaining)}`,`Phòng ${i.room||'?'}`,href);
+    // phòng: lấy từ ô "Phòng", không có thì đoán từ tên món (The Beige Room…)
+    let rooms=roomsOf(i.room);
+    if(!rooms.length) rooms=roomsOf(items.map(it=>it.n).join(' | '));
+    if(!rooms.length&&String(i.room||'').trim()) rooms=[ensureRoom('x:'+i.room.trim(),i.room.trim())];
+    const room=rooms[0]||'', rl=rooms.map(k=>(ROOMS.find(r=>r.k===k)||{}).lbl||k).join(', ');
+    (stays[key]=stays[key]||[]).push({room,ci,co});
+    const ameta=[co!==ci?'đến '+dm(co):'',rooms.length>1?rl:'',rooms.length?'':'Chưa ghi phòng'].filter(Boolean).join(' · ');
+    add({...base,room,day:ci,type:'arrive',what:'Nhận phòng',meta:ameta,ref:`inv:${i.id}:arrive`});
+    rooms.slice(1).forEach(r=>add({...base,room:r,day:ci,type:'arrive',what:'Nhận phòng',meta:ameta,ref:`inv:${i.id}:arrive:${r}`}));
+    for(let d=addD(ci,1); d<co; d=addD(d,1)) rooms.forEach(r=>add({...base,room:r,day:d,type:'stay'}));
+    if(co!==ci) rooms.forEach((r,k)=>add({...base,room:r,day:co,type:'leave',what:'Trả phòng',meta:rooms.length>1?rl:'',ref:`inv:${i.id}:leave${k?':'+r:''}`}));
+    items.forEach(it=>{
+      if(it.bus) return;
+      const k=itemKind(it.n||''); if(!k) return;
+      const q=Number(it.q)||0;
+      add({...base,room,day:ci,type:k,what:k==='bike'?'Thuê '+it.n.replace(/^Honda |^Yamaha /i,''):k==='early'?'Check-in sớm':it.n,
+        meta:[q?q+' '+(it.u||''):'',it.note||''].filter(Boolean).join(' · '),ref:`inv:${i.id}:${k}:${it.n}`});
+    });
+    if(Number(b.remaining)>0&&Number(b.total)>0) add({...base,room,day:ci,type:'money',amt:b.remaining,what:`Còn thu ${money(b.remaining)}`,meta:''});
     note(i.customer_id,ci);
   });
 
   combos.forEach(c=>{
     const b=B['combo:'+c.code], S=c.data||{}; if(!b) return;
-    const name=who(c.customer_id,c.guest), href=prof(c.customer_id,'combo.html?open='+encodeURIComponent(c.code));
-    const x1=S.x1||{}, x2=S.x2||{}, go=isDate(x1.date)?x1.date:b.start_date;
-    add(go,'bus',`${name} · lên xe ${x1.time||''}`,`Combo ${c.code} · ${c.pax||''} khách · ${x1.from||''} → ${x1.to||''}`,href);
-    if(S.early&&S.early.on) add(S.early.date,'early',`${name} · nghỉ sớm khi xe tới`,`Combo ${c.code} · ${c.pax||''} khách`,href);
-    (S.stays||[]).forEach((st,k)=>{ if(isDate(st.in)) add(st.in,k===0?'arrive':'stay',`${name} · đêm ${k+1} ${st.place||''}`,`Combo ${c.code}`,href); });
-    if(S.bike&&S.bike.qty>0) add(S.bike.from,'bike',`${name} · giao ${S.bike.qty} xe ${S.bike.type||''}`,`Đến ${isDate(S.bike.to)?dm(S.bike.to):'?'}`,href);
-    if(S.shower&&S.shower.on) add(S.shower.date,'leave',`${name} · tắm, chờ xe về`,`Combo ${c.code}`,href);
-    add(x2.date,'bus',`${name} · xe về ${x2.time||''}`,`${x2.from||''} → ${x2.to||''}`,href);
-    if(Number(b.remaining)>0) add(isDate(S.early&&S.early.date)?S.early.date:addD(go,1),'money',`${name} · còn thu ${money(b.remaining)}`,`Combo ${c.code}`,href);
+    const name=who(c.customer_id,c.guest), key=keyOf(c.customer_id,name);
+    const base={key,who:name,cust:C[c.customer_id],href:prof(c.customer_id,'combo.html?open='+encodeURIComponent(c.code))};
+    const x1=S.x1||{}, x2=S.x2||{}, go=isDate(x1.date)?x1.date:b.start_date, pax=c.pax?c.pax+' khách':'';
+    add({...base,day:go,type:'bus',what:`Lên xe ${x1.time||''}`.trim(),meta:[`${x1.from||''} → ${x1.to||''}`,pax].join(' · '),ref:`combo:${c.code}:x1`});
+    if(S.early&&S.early.on) add({...base,day:S.early.date,type:'early',what:'Nghỉ sớm khi xe tới',meta:`Combo ${c.code}${pax?' · '+pax:''}`,ref:`combo:${c.code}:early`});
+    (S.stays||[]).forEach((st,k)=>add({...base,day:st.in,type:'other',what:`Đêm ${k+1}: ${st.place||'?'}`,meta:`Combo ${c.code}`,ref:`combo:${c.code}:stay${k}`}));
+    if(S.bike&&S.bike.qty>0){
+      add({...base,day:S.bike.from,type:'bike',what:`Giao ${S.bike.qty} xe ${S.bike.type||''}`.trim(),meta:isDate(S.bike.to)?'Trả '+dm(S.bike.to):'',ref:`combo:${c.code}:bike`});
+      if(isDate(S.bike.to)&&S.bike.to!==S.bike.from) add({...base,day:S.bike.to,type:'bike',what:`Nhận lại ${S.bike.qty} xe`,meta:`Combo ${c.code}`,ref:`combo:${c.code}:bike-back`});
+    }
+    if(S.shower&&S.shower.on) add({...base,day:S.shower.date,type:'leave',what:'Tắm, chờ xe về',meta:`Combo ${c.code}`,ref:`combo:${c.code}:shower`});
+    add({...base,day:x2.date,type:'bus',what:`Xe về ${x2.time||''}`.trim(),meta:`${x2.from||''} → ${x2.to||''}`,ref:`combo:${c.code}:x2`});
+    if(Number(b.remaining)>0) add({...base,day:isDate(S.early&&S.early.date)?S.early.date:addD(go,1),type:'money',amt:b.remaining,what:`Còn thu ${money(b.remaining)}`,meta:`Combo ${c.code}`});
     note(c.customer_id,go);
   });
 
-  // checklist not finished: remind on the guest's first upcoming day
+  // checklist chưa xong: nhắc vào ngày đầu tiên sắp tới của khách
   const STEPS=['bus_out','bus_back','bike','room','other','early','taxi'];
   Object.entries(firstDay).forEach(([cid,day])=>{
     const ck=(C[cid]&&C[cid].checklist)||{};
     const left=STEPS.filter(k=>!(ck[k]&&(ck[k].st==='done'||ck[k].st==='skip'))).length;
-    if(left) add(day,'task',`${who(cid)} · checklist còn ${left} mục`,'Mở hồ sơ để hoàn thành','khach.html#'+encodeURIComponent(cid));
+    if(left) add({key:'c:'+cid,who:who(cid),cust:C[cid],day,type:'task',left,what:`Checklist còn ${left} mục`,meta:'Mở hồ sơ để hoàn thành',href:'khach.html#'+encodeURIComponent(cid)});
   });
+
+  // việc chưa có phòng: nếu hôm đó khách đang ở phòng nào thì xếp vào dòng phòng đó
+  ev.forEach(e=>{
+    if(e.room!==undefined) return;
+    const s=(stays[e.key]||[]).find(x=>x.ci<=e.day&&e.day<=x.co);
+    e.room=s?s.room:'';
+  });
+
+  ST={}; MAN=[];
+  tasks.forEach(t=>{
+    if(t.ref) ST[t.ref]={id:t.id,status:t.status||''};
+    else if(isDate(t.day)){ if(t.room&&!ROOMS.some(r=>r.k===t.room)) ensureRoom(t.room,t.room.replace(/^x:/,''));
+      MAN.push(t); }
+  });
+  EV=ev;
 }
 
-function dayEvents(day){ return (events[day]||[]).slice().sort((a,b)=>ORDER.indexOf(a.type)-ORDER.indexOf(b.type)); }
-// one row per guest; tap to open that guest's tasks for the day
-function groupsHTML(day){
-  const ev=dayEvents(day); if(!ev.length) return '<div class="empty">Không có việc</div>';
-  const by=new Map(); ev.forEach(e=>{ if(!by.has(e.who)) by.set(e.who,[]); by.get(e.who).push(e); });
-  return [...by.entries()].map(([who,list])=>{ const types=[...new Set(list.map(e=>e.type))];
-    return `<details class="g"><summary><span class="w"><b>${avatarHtml(WHO[who]||{id:who,name:who},34)} ${esc(who)}</b><span class="gd">${types.map(t=>`<i class="dot t-${t}"></i>`).join('')}</span></span>
-      <span class="gc">${list.length} việc</span><span class="chev" aria-hidden="true">›</span></summary>
-      ${list.map(e=>`<a class="ev t-${e.type}" href="${esc(e.href)}"><span class="bar-c" aria-hidden="true"></span><span class="w"><b>${esc(e.what)}</b><div class="m">${esc(e.meta)}</div></span></a>`).join('')}
-    </details>`; }).join('');
+function allEvents(){
+  return EV.concat(MAN.map(t=>({day:t.day,key:'m:'+t.id,type:'manual',what:t.title,meta:'',room:t.room||'',mid:t.id})));
 }
-function evHTML(e){ return `<a class="ev t-${e.type}" href="${esc(e.href)}"><span class="bar-c" aria-hidden="true"></span><span class="w"><b>${esc(e.title)}</b><div class="m">${esc(e.meta)}</div></span></a>`; }
+function statusOf(e){ return e.mid?((MAN.find(t=>t.id===e.mid)||{}).status||''):(e.ref&&ST[e.ref]?ST[e.ref].status:''); }
+const tickable=e=>TYPES[e.type][2]===1&&(e.ref||e.mid);
+
 function startOfWeek(s){ const d=D(s), k=(d.getDay()+6)%7; d.setDate(d.getDate()-k); return iso(d); }
-function summary(days){
-  const all=days.flatMap(d=>events[d]||[]), n=t=>all.filter(e=>e.type===t).length;
-  $('sum').innerHTML=`<div>Khách đến<b>${n('arrive')}</b></div><div>Chuyến xe<b>${n('bus')}</b></div><div>Còn thu<b>${n('money')}</b></div><div>Checklist<b>${n('task')}</b></div>`;
+function visibleDays(){ if(view==='day') return [anchor]; const s=startOfWeek(anchor); return [...Array(7)].map((_,k)=>addD(s,k)); }
+
+function chipHTML(e){
+  const [ic,lbl]=TYPES[e.type], st=statusOf(e), tk=tickable(e);
+  const late=tk&&st!=='done'&&e.day<TODAY;
+  const text=`<b>${esc(e.what||lbl)}</b>${e.meta?`<small>${esc(e.meta)}</small>`:''}`;
+  const body=e.mid?`<button type="button" class="tx" data-edit="${esc(e.mid)}">${text}</button>`
+    :`<a class="tx" href="${esc(e.href||'#')}" title="${esc((e.what||lbl)+(e.meta?' · '+e.meta:''))}">${text}</a>`;
+  const btn=tk?`<button type="button" class="tk ${st}" data-ref="${esc(e.ref||'')}" data-mid="${esc(e.mid||'')}" data-day="${e.day}" data-room="${esc(e.room)}" data-title="${esc((e.who?e.who+' · ':'')+(e.what||lbl))}"
+      aria-label="${esc(e.what||lbl)}: ${st==='done'?'hoàn thành':st==='doing'?'đang xử lý':'chưa làm'} — bấm để đổi"${TASKS_OK?'':' disabled title="Cần chạy supabase/009_lich_cong_viec.sql"'}>${st==='done'?'✓':st==='doing'?'…':''}</button>`:'';
+  return `<div class="chip t-${e.type} st-${st||'todo'}${late?' late':''}"><span class="ic" aria-hidden="true">${ic}</span>${body}${btn}</div>`;
 }
+function cellHTML(list){
+  const by=new Map();
+  list.sort((a,b)=>ORDER.indexOf(a.type)-ORDER.indexOf(b.type)).forEach(e=>{ if(!by.has(e.key)) by.set(e.key,[]); by.get(e.key).push(e); });
+  return [...by.values()].map(g=>{
+    const e0=g[0];
+    if(e0.type==='manual') return g.map(chipHTML).join('');
+    const av=avatarHtml(e0.cust||WHO[e0.who]||{id:e0.key,name:e0.who},22);
+    const bd=g.filter(e=>e.type==='money'||e.type==='task').map(e=>`<a class="bd t-${e.type}" href="${esc(e.href||'#')}" title="${esc(e.what+(e.meta?' · '+e.meta:''))}">${e.type==='money'?'💰 '+short(e.amt):'📋 '+e.left}</a>`).join('');
+    const name=`<div class="gr"><a class="gn" href="${esc(e0.href||'#')}">${av}<span>${esc(e0.who)}</span></a>${bd}</div>`;
+    const real=g.filter(e=>!['stay','money','task'].includes(e.type));
+    if(!real.length) return `<div class="gc${g.every(e=>e.type==='stay')?' stay':''}"${g.every(e=>e.type==='stay')?' title="Đang ở"':''}>${name}</div>`;
+    return `<div class="gc">${name}${real.map(chipHTML).join('')}</div>`;
+  }).join('');
+}
+
+function summary(days, all){
+  const inV=all.filter(e=>days.includes(e.day));
+  const n=t=>inV.filter(e=>e.type===t).length;
+  const guests=new Set(inV.filter(e=>e.type!=='manual').map(e=>e.key)).size;
+  const tk=inV.filter(tickable), done=tk.filter(e=>statusOf(e)==='done').length;
+  $('sum').innerHTML=`<div>Khách<b>${guests}</b></div><div>Thuê xe<b>${n('bike')}</b></div><div>Vé xe<b>${n('bus')}</b></div>
+    <div>Taxi<b>${n('taxi')}</b></div><div>Tour / Guide<b>${n('tour')}</b></div><div>Còn thu<b>${n('money')}</b></div>
+    <div class="s-todo">Cần làm<b>${tk.length-done}</b></div><div class="s-done">Hoàn thành<b>${done}</b></div>`;
+}
+
 function draw(){
   document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.view===view));
-  $('cal').className=view;
-  if(view==='week'){
-    const s=startOfWeek(anchor), days=[...Array(7)].map((_,k)=>addD(s,k));
-    $('title').textContent=`${dm(days[0])} – ${dm(days[6])}/${days[6].slice(0,4)}`;
-    summary(days); $('detail').innerHTML='';
-    $('cal').innerHTML=days.map(d=>{ const ev=dayEvents(d);
-      return `<section class="day${d===TODAY?' today':''}"><div class="dh">${DOW[D(d).getDay()]} ${dm(d)}${d===TODAY?' <small>Hôm nay</small>':''}<small style="margin-left:auto">${ev.length?ev.length+' việc':''}</small></div>
-        ${groupsHTML(d)}</section>`; }).join('');
-  } else {
-    const a=D(anchor), first=iso(new Date(a.getFullYear(),a.getMonth(),1)), last=iso(new Date(a.getFullYear(),a.getMonth()+1,0));
-    const s=startOfWeek(first), cells=[]; for(let d=s; d<=last||cells.length%7; d=addD(d,1)) cells.push(d);
-    $('title').textContent=`Tháng ${a.getMonth()+1}/${a.getFullYear()}`;
-    summary(cells.filter(d=>d>=first&&d<=last));
-    $('cal').innerHTML=`<div class="mgrid">${['T2','T3','T4','T5','T6','T7','CN'].map(x=>`<div class="mh">${x}</div>`).join('')}
-      ${cells.map(d=>{ const ev=dayEvents(d), types=[...new Set(ev.map(e=>e.type))];
-        return `<button type="button" class="mc${d<first||d>last?' out':''}${d===TODAY?' today':''}${d===sel?' sel':''}" data-day="${d}" aria-label="${dm(d)}: ${ev.length} việc">
-          <span class="n">${Number(d.slice(8))}</span><span class="dots">${types.map(t=>`<i class="dot t-${t}"></i>`).join('')}</span>
-          ${ev.slice(0,2).map(e=>`<span class="lbl t-${e.type}" style="color:var(--c)">${esc(e.title)}</span>`).join('')}
-          ${ev.length?`<span class="cnt">${ev.length} việc</span>`:''}</button>`; }).join('')}</div>`;
-    $('cal').querySelectorAll('.mc').forEach(b=>b.onclick=()=>{ sel=b.dataset.day; if(sel<first||sel>last) anchor=sel; draw(); $('detail').scrollIntoView({behavior:'smooth',block:'start'}); });
-    const d=sel&&sel>=first&&sel<=last?sel:null;
-    $('detail').innerHTML=d?`<section class="day"><div class="dh">${DOW[D(d).getDay()]} ${dm(d)}</div>${groupsHTML(d)}</section>`
-      :'<p class="empty">Bấm vào một ngày để xem chi tiết.</p>';
-  }
+  const days=visibleDays(), all=allEvents();
+  $('title').textContent=view==='day'?`${DOW[D(anchor).getDay()]} ${dm(anchor)}/${anchor.slice(0,4)}`
+    :`${dm(days[0])} – ${dm(days[6])}/${days[6].slice(0,4)}`;
+  $('notice').innerHTML=TASKS_OK?'':'<div class="note">⚠ Chưa bật lưu trạng thái tick và việc ghi tay. Cần chạy file <b>supabase/009_lich_cong_viec.sql</b> trên Supabase (SQL Editor). Lịch vẫn xem được bình thường.</div>';
+  summary(days,all);
+  const cell={}; all.forEach(e=>{ if(days.includes(e.day)) (cell[e.day+'|'+e.room]=cell[e.day+'|'+e.room]||[]).push(e); });
+  const rows=ROOMS.filter(r=>!r.extra).concat(ROOMS.filter(r=>r.extra).sort((a,b)=>a.lbl.localeCompare(b.lbl)));
+  const head=`<div class="gh corner">Phòng</div>`+days.map(d=>`<div class="gh${d===TODAY?' today':''}">${DOW[D(d).getDay()]} ${dm(d)}${d===TODAY?'<small>Hôm nay</small>':''}</div>`).join('');
+  const row=(k,lbl,sub,cls)=>`<div class="rh ${cls||''}">${esc(lbl)}${sub?`<small>${esc(sub)}</small>`:''}</div>`+days.map(d=>
+    `<div class="cell${d===TODAY?' today':d<TODAY?' past':''}">${cellHTML(cell[d+'|'+k]||[])}${TASKS_OK?`<button type="button" class="add" data-add-day="${d}" data-add-room="${esc(k)}" aria-label="Thêm việc ${dm(d)} ${esc(lbl)}">＋</button>`:''}</div>`).join('');
+  $('cal').className='grid'+(view==='day'?' one':'');
+  $('cal').style.setProperty('--n',days.length);
+  $('cal').innerHTML=head+rows.map(r=>row(r.k,r.lbl,r.sub)).join('')+row('','Công việc thêm','Không ở phòng','extra');
+  $('legendTypes').innerHTML='Loại việc: '+['arrive','early','bike','bus','taxi','tour','other','money','task','manual']
+    .map(t=>`<span class="lc t-${t}">${TYPES[t][0]} ${TYPES[t][1]}</span>`).join('');
 }
-document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{ view=b.dataset.view; draw(); });
-$('prev').onclick=()=>{ anchor=view==='week'?addD(anchor,-7):iso(new Date(D(anchor).getFullYear(),D(anchor).getMonth()-1,1)); draw(); };
-$('next').onclick=()=>{ anchor=view==='week'?addD(anchor,7):iso(new Date(D(anchor).getFullYear(),D(anchor).getMonth()+1,1)); draw(); };
-$('today').onclick=()=>{ anchor=TODAY; sel=TODAY; draw(); };
+
+// ── đổi trạng thái: chưa làm → đang xử lý → hoàn thành → chưa làm ──
+const NEXT={'':'doing',doing:'done',done:''};
+async function cycle(btn){
+  const ref=btn.dataset.ref, mid=btn.dataset.mid;
+  const cur=mid?((MAN.find(t=>t.id===mid)||{}).status||''):(ST[ref]?ST[ref].status:'');
+  const nx=NEXT[cur]??'';
+  // đổi ngay trên màn hình, lỗi thì trả lại
+  const undo=()=>{ if(mid){ const t=MAN.find(t=>t.id===mid); if(t) t.status=cur; } else if(ST[ref]) ST[ref].status=cur; draw(); };
+  if(mid){ const t=MAN.find(t=>t.id===mid); if(t) t.status=nx; } else ST[ref]={...(ST[ref]||{}),status:nx};
+  draw();
+  try{
+    if(mid) await sb('tasks?id=eq.'+encodeURIComponent(mid),{method:'PATCH',prefer:'return=minimal',body:{status:nx}});
+    else{
+      const r=await sb('tasks?on_conflict=branch,ref',{method:'POST',prefer:'resolution=merge-duplicates,return=representation',
+        body:{ref,status:nx,day:btn.dataset.day,room:btn.dataset.room||'',title:btn.dataset.title||''}});
+      if(r&&r[0]) ST[ref].id=r[0].id;
+    }
+  }catch(e){ console.warn('[tick]',e); undo(); }
+}
+
+// ── thêm / sửa việc ghi tay ──
+let editing=null;
+function openDlg(t){
+  editing=t&&t.id?t:null;
+  $('dlgTitle').textContent=editing?'Sửa việc':'Thêm việc';
+  $('fTitle').value=t&&t.title||'';
+  $('fDay').value=t&&t.day||(view==='day'?anchor:(visibleDays().includes(TODAY)?TODAY:visibleDays()[0]));
+  $('fRoom').innerHTML=`<option value="">Công việc thêm (không ở phòng)</option>`+ROOMS.map(r=>`<option value="${esc(r.k)}">${esc(r.lbl)}${r.sub?' · '+esc(r.sub):''}</option>`).join('');
+  $('fRoom').value=t&&t.room||'';
+  $('fDel').hidden=!editing;
+  $('dlg').showModal(); $('fTitle').focus();
+}
+$('dlgForm').onsubmit=async ev=>{
+  ev.preventDefault();
+  const body={title:$('fTitle').value.trim(),day:$('fDay').value,room:$('fRoom').value};
+  if(!body.title||!isDate(body.day)) return;
+  $('fSave').disabled=true;
+  try{
+    if(editing){ await sb('tasks?id=eq.'+encodeURIComponent(editing.id),{method:'PATCH',prefer:'return=minimal',body}); Object.assign(editing,body); }
+    else{ const r=await sb('tasks',{method:'POST',prefer:'return=representation',body:{...body,status:''}}); if(r&&r[0]) MAN.push(r[0]); }
+    $('dlg').close(); draw();
+  }catch(e){ console.warn('[task save]',e); }
+  finally{ $('fSave').disabled=false; }
+};
+$('fDel').onclick=async()=>{
+  if(!editing||!confirm('Xoá việc này?')) return;
+  try{ await sb('tasks?id=eq.'+encodeURIComponent(editing.id),{method:'PATCH',prefer:'return=minimal',body:{deleted_at:new Date().toISOString()}});
+    MAN=MAN.filter(t=>t!==editing); $('dlg').close(); draw(); }catch(e){ console.warn('[task del]',e); }
+};
+$('fCancel').onclick=()=>$('dlg').close();
+$('addTask').onclick=()=>{ if(!TASKS_OK) return alert('Cần chạy file supabase/009_lich_cong_viec.sql trên Supabase trước.'); openDlg(null); };
+
+$('cal').addEventListener('click',e=>{
+  const tk=e.target.closest('.tk'); if(tk&&!tk.disabled){ e.preventDefault(); cycle(tk); return; }
+  const ed=e.target.closest('[data-edit]'); if(ed){ openDlg(MAN.find(t=>t.id===ed.dataset.edit)); return; }
+  const ad=e.target.closest('[data-add-day]'); if(ad) openDlg({day:ad.dataset.addDay,room:ad.dataset.addRoom});
+});
+document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{ view=b.dataset.view; try{ localStorage.setItem('lich_view',view); }catch(e){} draw(); });
+$('prev').onclick=()=>{ anchor=addD(anchor,view==='week'?-7:-1); draw(); };
+$('next').onclick=()=>{ anchor=addD(anchor,view==='week'?7:1); draw(); };
+$('today').onclick=()=>{ anchor=TODAY; draw(); };
 load().then(draw).catch(e=>{ $('cal').innerHTML=`<p class="err">Lỗi tải dữ liệu: ${esc(e.message)}</p>`; });
 </script>
 </body>
